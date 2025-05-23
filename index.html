@@ -722,6 +722,13 @@ We commit to supporting each other in achieving these goals.
         return;
       }
 
+      // Check if user has already signed
+      const signBtn = document.getElementById('signBtn');
+      if (signBtn.disabled || signBtn.textContent.includes('signed')) {
+        showMessage("You have already signed this agreement.", 'info');
+        return;
+      }
+
       setButtonLoading('signBtn', true);
       try {
         const now = new Date().toISOString();
@@ -733,6 +740,22 @@ We commit to supporting each other in achieving these goals.
         console.log('Current user ID:', currentUser.id);
         console.log('Project creator ID:', currentProject.creator_id);
         console.log('Project partner ID:', currentProject.partner_id);
+
+        // Double-check if user has already signed in database
+        const { data: existingAgreement } = await supabase
+          .from('agreements')
+          .select('creator_signed, partner_signed')
+          .eq('project_id', currentProject.id)
+          .single();
+
+        if (existingAgreement) {
+          const alreadySigned = isCreator ? existingAgreement.creator_signed : existingAgreement.partner_signed;
+          if (alreadySigned) {
+            showMessage("You have already signed this agreement.", 'info');
+            setButtonLoading('signBtn', false);
+            return;
+          }
+        }
 
         // Use UPDATE instead of UPSERT to avoid overwriting
         let query;
@@ -789,22 +812,35 @@ We commit to supporting each other in achieving these goals.
           return;
         }
 
-        // Update UI
-        document.getElementById('userSignature').classList.remove('hidden');
-        document.getElementById('userSignDate').textContent = new Date().toLocaleDateString();
-        document.getElementById('signBtn').textContent = '✅ You have signed!';
-        document.getElementById('signBtn').disabled = true;
-        
-        // Database status button is now permanently available
-        
-        showMessage("✅ Agreement signed! Waiting for partner to sign...");
-        
-        // Check if both have signed
-        checkAgreementCompletion();
+        // Verify the signature was actually recorded by fetching updated agreement
+        const { data: verifyAgreement } = await supabase
+          .from('agreements')
+          .select('*')
+          .eq('project_id', currentProject.id)
+          .single();
+
+        const isCreator = currentProject.creator_id === currentUser.id;
+        const userSignedSuccessfully = isCreator ? verifyAgreement?.creator_signed : verifyAgreement?.partner_signed;
+
+        if (userSignedSuccessfully) {
+          // Update UI only after confirming signature was recorded
+          document.getElementById('userSignature').classList.remove('hidden');
+          document.getElementById('userSignDate').textContent = new Date().toLocaleDateString();
+          document.getElementById('signBtn').textContent = '✅ You have signed!';
+          document.getElementById('signBtn').disabled = true;
+          document.getElementById('userAgree').disabled = true;
+          
+          showMessage("✅ Agreement signed! Waiting for partner to sign...");
+          
+          // Check if both have signed
+          checkAgreementCompletion();
+        } else {
+          showMessage("Signature verification failed. Please try again.", 'error');
+          setButtonLoading('signBtn', false);
+        }
         
       } catch (error) {
         showMessage("Failed to sign agreement.", 'error');
-      } finally {
         setButtonLoading('signBtn', false);
       }
     }
