@@ -329,14 +329,13 @@
           .from('projects')
           .update({ partner_id: currentUser.id })
           .eq('project_code', projectCode)
-          .select('*')
-          .single();
+          .select('*');
           
         if (error) {
           console.error('Update project error:', error);
           showMessage(`Failed to join: ${error.message}`, 'error');
         } else {
-          currentProject = data;
+          currentProject = data[0]; // Take first result from array
           showMessage("🤝 Successfully joined project!");
           updateUIBasedOnProject();
         }
