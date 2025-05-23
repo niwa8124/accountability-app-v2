@@ -700,21 +700,45 @@ We commit to supporting each other in achieving these goals.
         const userVision = document.getElementById('finalUserVision').innerText;
         const partnerVision = document.getElementById('finalPartnerVision').innerText;
 
-        // Create or update agreement with user's signature
+        // First, get existing agreement to preserve other partner's signature
+        const { data: existingAgreement } = await supabase
+          .from('agreements')
+          .select('*')
+          .eq('project_id', currentProject.id)
+          .single();
+
+        const isCreator = currentProject.creator_id === currentUser.id;
+        
+        // Prepare update data, preserving existing signatures
+        const updateData = {
+          project_id: currentProject.id,
+          creator_vision: isCreator ? userVision : partnerVision,
+          partner_vision: isCreator ? partnerVision : userVision,
+        };
+
+        if (isCreator) {
+          // Current user is creator
+          updateData.creator_signed = true;
+          updateData.creator_signed_at = now;
+          // Preserve partner's signature if it exists
+          if (existingAgreement) {
+            updateData.partner_signed = existingAgreement.partner_signed || false;
+            updateData.partner_signed_at = existingAgreement.partner_signed_at;
+          }
+        } else {
+          // Current user is partner
+          updateData.partner_signed = true;
+          updateData.partner_signed_at = now;
+          // Preserve creator's signature if it exists
+          if (existingAgreement) {
+            updateData.creator_signed = existingAgreement.creator_signed || false;
+            updateData.creator_signed_at = existingAgreement.creator_signed_at;
+          }
+        }
+
         const { data, error } = await supabase
           .from('agreements')
-          .upsert(
-            {
-              project_id: currentProject.id,
-              creator_vision: currentProject.creator_id === currentUser.id ? userVision : partnerVision,
-              partner_vision: currentProject.creator_id === currentUser.id ? partnerVision : userVision,
-              creator_signed: currentProject.creator_id === currentUser.id,
-              partner_signed: currentProject.partner_id === currentUser.id,
-              creator_signed_at: currentProject.creator_id === currentUser.id ? now : null,
-              partner_signed_at: currentProject.partner_id === currentUser.id ? now : null
-            },
-            { onConflict: 'project_id' }
-          );
+          .upsert(updateData, { onConflict: 'project_id' });
 
         if (error) {
           showMessage(`Failed to sign: ${error.message}`, 'error');
@@ -747,17 +771,32 @@ We commit to supporting each other in achieving these goals.
           .eq('project_id', currentProject.id)
           .single();
 
-        if (agreement && agreement.creator_signed && agreement.partner_signed) {
-          // Both signed - show download button and save to history
-          document.getElementById('downloadBtn').classList.remove('hidden');
-          document.getElementById('partnerSignature').classList.remove('hidden');
-          document.getElementById('partnerSignDate').textContent = new Date(agreement.partner_signed_at).toLocaleDateString();
+        console.log('Checking agreement completion:', agreement);
+        
+        if (agreement) {
+          const isCreator = currentProject.creator_id === currentUser.id;
           
-          showMessage("🎉 Agreement completed! Both partners have signed.");
-          
-          // Save to history
-          await saveToHistory(agreement);
-          loadAgreementHistory();
+          // Show partner's signature if they have signed
+          if (isCreator && agreement.partner_signed) {
+            document.getElementById('partnerSignature').classList.remove('hidden');
+            document.getElementById('partnerSignDate').textContent = new Date(agreement.partner_signed_at).toLocaleDateString();
+          } else if (!isCreator && agreement.creator_signed) {
+            document.getElementById('partnerSignature').classList.remove('hidden');
+            document.getElementById('partnerSignDate').textContent = new Date(agreement.creator_signed_at).toLocaleDateString();
+          }
+
+          // Check if both have signed
+          if (agreement.creator_signed && agreement.partner_signed) {
+            document.getElementById('downloadBtn').classList.remove('hidden');
+            showMessage("🎉 Agreement completed! Both partners have signed.");
+            
+            // Save to history
+            await saveToHistory(agreement);
+            loadAgreementHistory();
+          } else {
+            const remainingPartner = isCreator ? 'partner' : 'creator';
+            showMessage(`✅ You have signed! Waiting for ${remainingPartner} to sign...`);
+          }
         }
       } catch (error) {
         console.error('Error checking agreement completion:', error);
