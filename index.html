@@ -295,7 +295,8 @@
       
       setButtonLoading('joinBtn', true);
       try {
-        // First, let's check if the project exists
+        // Note: This query may fail due to RLS policy - users can only see projects they're already part of
+        // but we need to lookup projects by code to join them. We need to update the RLS policy.
         console.log('Looking for project:', projectCode);
         const { data: projectData, error: findError } = await supabase
           .from('projects')
@@ -303,8 +304,10 @@
           .eq('project_code', projectCode);
         
         console.log('Found project data:', projectData, 'Error:', findError);
+        console.log('Current user:', currentUser?.id);
         
         if (findError || !projectData || projectData.length === 0) {
+          console.log('Query failed - likely due to RLS policy blocking access');
           showMessage("Project code not found. Check the code and try again.", 'error');
           return;
         }
