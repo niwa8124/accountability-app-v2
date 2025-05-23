@@ -297,18 +297,19 @@
       try {
         // First, let's check if the project exists
         console.log('Looking for project:', projectCode);
-        const { data: existingProject, error: findError } = await supabase
+        const { data: projectData, error: findError } = await supabase
           .from('projects')
           .select('*')
-          .eq('project_code', projectCode)
-          .single();
+          .eq('project_code', projectCode);
         
-        console.log('Found project:', existingProject, 'Error:', findError);
+        console.log('Found project data:', projectData, 'Error:', findError);
         
-        if (findError) {
+        if (findError || !projectData || projectData.length === 0) {
           showMessage("Project code not found. Check the code and try again.", 'error');
           return;
         }
+        
+        const existingProject = projectData[0];
         
         if (existingProject.partner_id) {
           showMessage("This project already has a partner.", 'error');
