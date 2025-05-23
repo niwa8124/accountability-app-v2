@@ -171,7 +171,11 @@
         <div class="project-setup-grid">
           <div>
             <h3>Create New Project</h3>
-            <button onclick="generateProjectCode()" id="generateBtn" style="width: 100%;">🎯 Generate Code</button>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <input type="text" id="customCodeInput" placeholder="Custom code (optional)" style="flex: 1;" maxlength="10" />
+              <button onclick="createProject()" id="createBtn">Create</button>
+            </div>
+            <p style="font-size: 0.9rem; color: #666; margin: 0;">Leave blank to auto-generate</p>
           </div>
           <div>
             <h3>Join Existing Project</h3>
@@ -183,6 +187,13 @@
         </div>
         <div id="currentProjectInfo" class="project-info hidden">
           <strong>✅ Active Project:</strong> <span id="currentProjectCode"></span>
+          <button onclick="showProjectSelector()" class="secondary" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;">Switch Project</button>
+        </div>
+        
+        <div id="projectSelector" class="card hidden">
+          <h3>📋 Your Projects</h3>
+          <div id="projectList"></div>
+          <button onclick="hideProjectSelector()" class="secondary" style="margin-top: 1rem;">Close</button>
         </div>
       </div>
 
@@ -277,6 +288,7 @@
 
     let currentUser = null;
     let currentProject = null;
+    let userProjects = [];
 
     document.addEventListener('DOMContentLoaded', function() {
       console.log('✅ Fresh app loaded');
@@ -315,15 +327,21 @@
     }
 
     function updateUIBasedOnProject() {
-      const sections = ['projectSetup', 'visionSection', 'reviewSection', 'agreementSection', 'historySection'];
+      const sections = ['projectSetup', 'visionSection', 'reviewSection', 'agreementSection', 'historySection', 'projectSelector'];
       sections.forEach(id => document.getElementById(id).classList.add('hidden'));
       
       if (!currentProject) {
         document.getElementById('projectSetup').classList.remove('hidden');
+        document.getElementById('currentProjectInfo').classList.add('hidden');
         updateStepIndicator(1);
       } else {
         document.getElementById('currentProjectInfo').classList.remove('hidden');
         document.getElementById('currentProjectCode').textContent = currentProject.project_code;
+        
+        // Show project setup section if user has multiple projects or wants to create/join more
+        if (userProjects.length > 0) {
+          document.getElementById('projectSetup').classList.remove('hidden');
+        }
         
         // Determine current step based on project state
         loadVisions().then(() => {
@@ -377,6 +395,18 @@
       
       setButtonLoading('signupBtn', true);
       try {
+        // Check if email already exists in profiles table
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', email)
+          .single();
+          
+        if (existingProfile) {
+          showMessage("Account with this email already exists. Please use login instead.", 'error');
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) showMessage(error.message, 'error');
         else showMessage("🎉 Account created! Check your email.");
@@ -411,24 +441,57 @@
       showMessage("Logged out!");
     }
 
-    async function generateProjectCode() {
+    async function createProject() {
       if (!currentUser) return showMessage("Please log in first.", 'error');
-      setButtonLoading('generateBtn', true);
+      
+      const customCode = document.getElementById('customCodeInput').value.trim().toUpperCase();
+      setButtonLoading('createBtn', true);
+      
       try {
-        const { data: code, error: codeError } = await supabase.rpc('generate_project_code');
-        if (codeError) return showMessage("Failed to generate code.", 'error');
+        let projectCode = customCode;
+        
+        if (customCode) {
+          // Validate custom code format
+          if (!/^[A-Z0-9]{3,10}$/.test(customCode)) {
+            showMessage("Custom code must be 3-10 characters (letters and numbers only).", 'error');
+            return;
+          }
+          
+          // Check if custom code already exists
+          const { data: existingProject } = await supabase
+            .from('projects')
+            .select('project_code')
+            .eq('project_code', customCode)
+            .single();
+            
+          if (existingProject) {
+            showMessage("This project code already exists. Choose a different one.", 'error');
+            return;
+          }
+        } else {
+          // Generate random code
+          const { data: code, error: codeError } = await supabase.rpc('generate_project_code');
+          if (codeError) return showMessage("Failed to generate code.", 'error');
+          projectCode = code;
+        }
 
-        const { data, error } = await supabase.from('projects').insert([{ project_code: code, creator_id: currentUser.id }]).select().single();
+        const { data, error } = await supabase
+          .from('projects')
+          .insert([{ project_code: projectCode, creator_id: currentUser.id }])
+          .select()
+          .single();
+          
         if (error) showMessage(error.message, 'error');
         else {
           currentProject = data;
-          showMessage(`🎯 Code: ${code}\nShare with your partner!`);
+          document.getElementById('customCodeInput').value = '';
+          showMessage(`🎯 Project created! Code: ${projectCode}\nShare with your partner!`);
           updateUIBasedOnProject();
         }
       } catch (error) {
-        showMessage("Failed to generate code.", 'error');
+        showMessage("Failed to create project.", 'error');
       } finally {
-        setButtonLoading('generateBtn', false);
+        setButtonLoading('createBtn', false);
       }
     }
 
@@ -521,7 +584,16 @@
       if (!currentUser) return;
       try {
         const { data: projects } = await supabase.from('projects').select('*').or(`creator_id.eq.${currentUser.id},partner_id.eq.${currentUser.id}`);
-        currentProject = projects?.[0] || null;
+        userProjects = projects || [];
+        
+        // Set current project: either the stored one or the most recent
+        const storedProjectId = localStorage.getItem(`currentProject_${currentUser.id}`);
+        if (storedProjectId) {
+          currentProject = userProjects.find(p => p.id === storedProjectId) || userProjects[0] || null;
+        } else {
+          currentProject = userProjects[0] || null;
+        }
+        
         updateUIBasedOnProject();
       } catch (error) {
         updateUIBasedOnProject();
@@ -788,6 +860,60 @@ Generated by Accountability Partners App
         
       } catch (error) {
         console.error('Error loading agreement history:', error);
+      }
+    }
+
+    // Project Selection Functions
+    function showProjectSelector() {
+      if (userProjects.length <= 1) {
+        showMessage("You only have one project.", 'info');
+        return;
+      }
+      
+      const projectList = document.getElementById('projectList');
+      projectList.innerHTML = '';
+      
+      userProjects.forEach(project => {
+        const projectItem = document.createElement('div');
+        projectItem.style.cssText = 'padding: 1rem; margin: 0.5rem 0; border: 2px solid #e1e5e9; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;';
+        
+        const isCurrentProject = project.id === currentProject?.id;
+        if (isCurrentProject) {
+          projectItem.style.borderColor = '#667eea';
+          projectItem.style.background = '#f8f9ff';
+        }
+        
+        const partnerStatus = project.partner_id ? '👥 With Partner' : '⏳ Waiting for Partner';
+        const roleText = project.creator_id === currentUser.id ? '📝 Creator' : '🤝 Partner';
+        
+        projectItem.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>${project.project_code}</strong> ${isCurrentProject ? '(Current)' : ''}
+              <br><small style="color: #666;">${roleText} • ${partnerStatus}</small>
+            </div>
+            ${!isCurrentProject ? '<button onclick="selectProject(\'' + project.id + '\')" style="padding: 0.5rem 1rem;">Select</button>' : ''}
+          </div>
+        `;
+        
+        projectList.appendChild(projectItem);
+      });
+      
+      document.getElementById('projectSelector').classList.remove('hidden');
+    }
+    
+    function hideProjectSelector() {
+      document.getElementById('projectSelector').classList.add('hidden');
+    }
+    
+    function selectProject(projectId) {
+      const project = userProjects.find(p => p.id === projectId);
+      if (project) {
+        currentProject = project;
+        localStorage.setItem(`currentProject_${currentUser.id}`, projectId);
+        updateUIBasedOnProject();
+        hideProjectSelector();
+        showMessage(`Switched to project: ${project.project_code}`);
       }
     }
   </script>
