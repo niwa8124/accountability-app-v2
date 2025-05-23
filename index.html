@@ -295,8 +295,21 @@
       
       setButtonLoading('joinBtn', true);
       try {
-        const { data, error } = await supabase.from('projects').update({ partner_id: currentUser.id }).eq('project_code', projectCode).is('partner_id', null).select().single();
-        if (error) showMessage("Failed to join. Check the code.", 'error');
+        const { data, error } = await supabase
+          .from('projects')
+          .update({ partner_id: currentUser.id })
+          .eq('project_code', projectCode)
+          .is('partner_id', null)
+          .select('*')
+          .single();
+        if (error) {
+          console.error('Join project error:', error);
+          if (error.code === 'PGRST116') {
+            showMessage("Project not found or already has a partner.", 'error');
+          } else {
+            showMessage(`Failed to join: ${error.message}`, 'error');
+          }
+        }
         else {
           currentProject = data;
           showMessage("🤝 Joined project!");
