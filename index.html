@@ -700,45 +700,61 @@ We commit to supporting each other in achieving these goals.
         const userVision = document.getElementById('finalUserVision').innerText;
         const partnerVision = document.getElementById('finalPartnerVision').innerText;
 
-        // First, get existing agreement to preserve other partner's signature
-        const { data: existingAgreement } = await supabase
-          .from('agreements')
-          .select('*')
-          .eq('project_id', currentProject.id)
-          .single();
-
         const isCreator = currentProject.creator_id === currentUser.id;
-        
-        // Prepare update data, preserving existing signatures
-        const updateData = {
-          project_id: currentProject.id,
-          creator_vision: isCreator ? userVision : partnerVision,
-          partner_vision: isCreator ? partnerVision : userVision,
-        };
+        console.log('Current user is creator:', isCreator);
+        console.log('Current user ID:', currentUser.id);
+        console.log('Project creator ID:', currentProject.creator_id);
+        console.log('Project partner ID:', currentProject.partner_id);
 
+        // Use UPDATE instead of UPSERT to avoid overwriting
+        let query;
         if (isCreator) {
-          // Current user is creator
-          updateData.creator_signed = true;
-          updateData.creator_signed_at = now;
-          // Preserve partner's signature if it exists
-          if (existingAgreement) {
-            updateData.partner_signed = existingAgreement.partner_signed || false;
-            updateData.partner_signed_at = existingAgreement.partner_signed_at;
-          }
+          query = supabase
+            .from('agreements')
+            .update({
+              creator_signed: true,
+              creator_signed_at: now,
+              creator_vision: userVision,
+              partner_vision: partnerVision
+            })
+            .eq('project_id', currentProject.id);
         } else {
-          // Current user is partner
-          updateData.partner_signed = true;
-          updateData.partner_signed_at = now;
-          // Preserve creator's signature if it exists
-          if (existingAgreement) {
-            updateData.creator_signed = existingAgreement.creator_signed || false;
-            updateData.creator_signed_at = existingAgreement.creator_signed_at;
-          }
+          query = supabase
+            .from('agreements')
+            .update({
+              partner_signed: true,
+              partner_signed_at: now,
+              creator_vision: partnerVision,
+              partner_vision: userVision
+            })
+            .eq('project_id', currentProject.id);
         }
 
-        const { data, error } = await supabase
-          .from('agreements')
-          .upsert(updateData, { onConflict: 'project_id' });
+        let { data, error } = await query.select('*');
+        
+        // If no agreement exists yet, create one
+        if (!data || data.length === 0) {
+          console.log('No existing agreement, creating new one');
+          const createData = {
+            project_id: currentProject.id,
+            creator_vision: isCreator ? userVision : partnerVision,
+            partner_vision: isCreator ? partnerVision : userVision,
+            creator_signed: isCreator,
+            partner_signed: !isCreator,
+            creator_signed_at: isCreator ? now : null,
+            partner_signed_at: isCreator ? null : now
+          };
+          
+          const createResult = await supabase
+            .from('agreements')
+            .insert(createData)
+            .select('*');
+            
+          data = createResult.data;
+          error = createResult.error;
+        }
+
+        console.log('Agreement after signing:', data?.[0]);
 
         if (error) {
           showMessage(`Failed to sign: ${error.message}`, 'error');
