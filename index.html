@@ -54,11 +54,53 @@
     .hidden { display: none; }
     .fade-in { animation: fadeIn 0.5s ease-in; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    /* Journey Indicator */
+    .journey-indicator { background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%); border: 2px solid #667eea; }
+    .step-indicator { display: flex; justify-content: space-between; margin-bottom: 1rem; padding: 0 1rem; }
+    .step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+    .step::after { content: ''; position: absolute; top: 20px; left: 60%; width: 80%; height: 2px; background: #e0e0e0; z-index: -1; }
+    .step:last-child::after { display: none; }
+    .step-number { width: 40px; height: 40px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 0.5rem; color: #666; transition: all 0.3s ease; }
+    .step.active .step-number { background: #667eea; color: white; }
+    .step.completed .step-number { background: #4CAF50; color: white; }
+    .step.completed::after { background: #4CAF50; }
+    .step-label { font-size: 0.9rem; text-align: center; color: #666; font-weight: 500; }
+    
+    /* Step Preview in Auth */
+    .step-preview { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .mini-step { background: #667eea; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; }
+    
+    /* Review Section */
+    .review-actions { display: flex; gap: 1rem; margin-top: 2rem; }
+    .review-actions button { flex: 1; }
+    
+    /* Signature Section */
+    .shared-visions { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
+    .user-vision { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #2196f3; }
+    .partner-vision { background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%); border: 2px solid #ff9800; }
+    .checkbox-container { margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .checkbox-container input[type="checkbox"] { width: auto; margin: 0; }
+    .signature-status { margin-top: 0.5rem; color: #4CAF50; font-weight: 500; }
+    .agreement-actions { margin-top: 2rem; }
+    
+    /* History Table */
+    .history-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .history-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; text-align: left; font-weight: 600; }
+    .history-table td { padding: 1rem; border-bottom: 1px solid #eee; }
+    .history-table tr:hover { background: #f8f9fa; }
+    .empty-state { text-align: center; padding: 2rem; color: #666; background: #f8f9fa; border-radius: 8px; }
+    
     @media (max-width: 768px) {
       .container { padding: 1rem; }
       .header h1 { font-size: 2rem; }
-      .auth-section, .project-setup-grid, .partner-visions { grid-template-columns: 1fr; }
+      .auth-section, .project-setup-grid, .partner-visions, .shared-visions { grid-template-columns: 1fr; }
       .user-info { flex-direction: column; gap: 0.5rem; text-align: center; }
+      .step-indicator { padding: 0; }
+      .step-number { width: 30px; height: 30px; font-size: 0.8rem; }
+      .step-label { font-size: 0.8rem; }
+      .review-actions { flex-direction: column; }
+      .history-table { font-size: 0.9rem; }
+      .history-table th, .history-table td { padding: 0.5rem; }
     }
   </style>
 </head>
@@ -90,12 +132,39 @@
         </div>
       </div>
       <div class="login-card">
-        <h2>ℹ️ How It Works</h2>
-        <p style="color: #666;">1. Create account → 2. Generate project code → 3. Share with partner → 4. Draft visions → 5. Support each other!</p>
+        <h2>🎯 4-Step Journey</h2>
+        <div class="step-preview">
+          <div class="mini-step">1. Project Setup</div>
+          <div class="mini-step">2. Draft Visions</div>
+          <div class="mini-step">3. Review Together</div>
+          <div class="mini-step">4. Sign Agreement</div>
+        </div>
       </div>
     </div>
 
     <div id="mainContent" class="hidden">
+      <!-- 4-Step Journey Indicator -->
+      <div class="card journey-indicator">
+        <h2>🎯 4-Step Journey</h2>
+        <div class="step-indicator">
+          <div class="step active" id="step1">
+            <div class="step-number">1</div>
+            <div class="step-label">Project Setup</div>
+          </div>
+          <div class="step" id="step2">
+            <div class="step-number">2</div>
+            <div class="step-label">Draft Visions</div>
+          </div>
+          <div class="step" id="step3">
+            <div class="step-number">3</div>
+            <div class="step-label">Review Together</div>
+          </div>
+          <div class="step" id="step4">
+            <div class="step-number">4</div>
+            <div class="step-label">Sign Agreement</div>
+          </div>
+        </div>
+      </div>
       <div id="projectSetup" class="card">
         <h2>🔗 Step 1: Create or Join a Project</h2>
         <p style="margin-bottom: 1.5rem; color: #666;">Create a new project or join your partner's project.</p>
@@ -128,8 +197,9 @@
         <div id="result" class="vision-result hidden"></div>
       </div>
 
-      <div id="partnersSection" class="card hidden">
-        <h2>🤝 Step 3: Partner Visions</h2>
+      <div id="reviewSection" class="card hidden">
+        <h2>🔍 Step 3: Review Visions Together</h2>
+        <p style="margin-bottom: 1.5rem; color: #666;">Review both visions and discuss any refinements needed before signing.</p>
         <div class="partner-visions">
           <div>
             <h3>Your Vision</h3>
@@ -140,7 +210,59 @@
             <div id="partnerVisionDisplay" class="vision-box partner-vision-box">Waiting for partner...</div>
           </div>
         </div>
-        <button onclick="downloadCombinedVision()" style="width: 100%;">📋 Download Agreement</button>
+        <div class="review-actions">
+          <button onclick="editVision()" class="secondary">✏️ Edit My Vision</button>
+          <button onclick="proceedToSigning()" id="proceedBtn">✅ Ready to Sign</button>
+        </div>
+      </div>
+
+      <div id="agreementSection" class="card hidden">
+        <h2>🤝 Step 4: Digital Signature</h2>
+        <p style="margin-bottom: 2rem; color: #666;">Once both partners sign, the agreement becomes official and will be saved to your history.</p>
+        <div class="shared-visions">
+          <div>
+            <h3>Your Vision</h3>
+            <div id="finalUserVision" class="vision-box user-vision">Your vision...</div>
+            <div class="checkbox-container">
+              <input type="checkbox" id="userAgree">
+              <label for="userAgree">I agree and digitally sign this agreement</label>
+            </div>
+            <div id="userSignature" class="signature-status hidden">✓ Signed by you on <span id="userSignDate"></span></div>
+          </div>
+          <div>
+            <h3>Partner's Vision</h3>
+            <div id="finalPartnerVision" class="vision-box partner-vision">Partner's vision...</div>
+            <div class="checkbox-container">
+              <input type="checkbox" id="partnerAgree" disabled>
+              <label for="partnerAgree">Partner agrees and signs</label>
+            </div>
+            <div id="partnerSignature" class="signature-status hidden">✓ Signed by partner on <span id="partnerSignDate"></span></div>
+          </div>
+        </div>
+        <div class="agreement-actions">
+          <button onclick="signAgreement()" id="signBtn" style="width: 100%;">✍️ Sign Agreement</button>
+          <button onclick="downloadFinalAgreement()" id="downloadBtn" class="hidden" style="width: 100%; margin-top: 1rem;">📋 Download Signed Agreement</button>
+        </div>
+      </div>
+
+      <div id="historySection" class="card hidden">
+        <h2>📊 Agreement History</h2>
+        <p style="margin-bottom: 1rem; color: #666;">Track your past accountability agreements and see your progress over time.</p>
+        <table class="history-table" id="agreementHistory">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Partner</th>
+              <th>Your Vision</th>
+              <th>Partner's Vision</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="emptyHistory" class="empty-state">
+          <p>No agreements yet. Complete your first agreement to see it here!</p>
+        </div>
       </div>
     </div>
 
@@ -193,16 +315,38 @@
     }
 
     function updateUIBasedOnProject() {
-      if (currentProject) {
+      const sections = ['projectSetup', 'visionSection', 'reviewSection', 'agreementSection', 'historySection'];
+      sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+      
+      if (!currentProject) {
+        document.getElementById('projectSetup').classList.remove('hidden');
+        updateStepIndicator(1);
+      } else {
         document.getElementById('currentProjectInfo').classList.remove('hidden');
         document.getElementById('currentProjectCode').textContent = currentProject.project_code;
-        document.getElementById('visionSection').classList.remove('hidden');
-        loadVisions();
-      } else {
-        document.getElementById('projectSetup').classList.remove('hidden');
-        document.getElementById('visionSection').classList.add('hidden');
-        document.getElementById('partnersSection').classList.add('hidden');
+        
+        // Determine current step based on project state
+        loadVisions().then(() => {
+          const userVision = document.getElementById('userVisionDisplay').innerText;
+          const partnerVision = document.getElementById('partnerVisionDisplay').innerText;
+          
+          if (!userVision || userVision === 'Your vision...') {
+            // Step 2: Need to draft vision
+            document.getElementById('visionSection').classList.remove('hidden');
+            updateStepIndicator(2);
+          } else if (!partnerVision || partnerVision === 'Waiting for partner...') {
+            // Step 2: Waiting for partner's vision
+            document.getElementById('visionSection').classList.remove('hidden');
+            updateStepIndicator(2);
+          } else {
+            // Step 3: Both have visions, can review
+            document.getElementById('reviewSection').classList.remove('hidden');
+            updateStepIndicator(3);
+          }
+        });
       }
+      
+      loadAgreementHistory();
     }
 
     function showMessage(message, type = 'info') {
@@ -396,7 +540,10 @@
             document.getElementById('partnerVisionDisplay').innerText = vision.vision_text;
           }
         });
-        if (userVision && partnerVision) document.getElementById('partnersSection').classList.remove('hidden');
+        if (userVision && partnerVision) {
+          document.getElementById('reviewSection').classList.remove('hidden');
+          updateStepIndicator(3);
+        }
       } catch (error) {
         console.error('Failed to load visions:', error);
       }
@@ -426,6 +573,216 @@ We commit to supporting each other in achieving these goals.
       link.download = `agreement-${currentProject.project_code}.txt`;
       link.click();
       showMessage("📋 Downloaded!");
+    }
+
+    // New functions for enhanced 4-step flow
+    function updateStepIndicator(currentStep) {
+      for (let i = 1; i <= 4; i++) {
+        const step = document.getElementById(`step${i}`);
+        step.classList.remove('active', 'completed');
+        if (i < currentStep) {
+          step.classList.add('completed');
+        } else if (i === currentStep) {
+          step.classList.add('active');
+        }
+      }
+    }
+
+    function editVision() {
+      document.getElementById('reviewSection').classList.add('hidden');
+      document.getElementById('visionSection').classList.remove('hidden');
+      updateStepIndicator(2);
+    }
+
+    function proceedToSigning() {
+      const userVision = document.getElementById('userVisionDisplay').innerText;
+      const partnerVision = document.getElementById('partnerVisionDisplay').innerText;
+      
+      if (!userVision || userVision === 'Your vision...' || !partnerVision || partnerVision === 'Waiting for partner...') {
+        showMessage("Both visions must be completed before signing.", 'error');
+        return;
+      }
+
+      // Copy visions to signature section
+      document.getElementById('finalUserVision').innerText = userVision;
+      document.getElementById('finalPartnerVision').innerText = partnerVision;
+      
+      document.getElementById('reviewSection').classList.add('hidden');
+      document.getElementById('agreementSection').classList.remove('hidden');
+      updateStepIndicator(4);
+    }
+
+    async function signAgreement() {
+      const userAgree = document.getElementById('userAgree').checked;
+      if (!userAgree) {
+        showMessage("Please check the agreement box to sign.", 'error');
+        return;
+      }
+
+      setButtonLoading('signBtn', true);
+      try {
+        const now = new Date().toISOString();
+        const userVision = document.getElementById('finalUserVision').innerText;
+        const partnerVision = document.getElementById('finalPartnerVision').innerText;
+
+        // Create or update agreement with user's signature
+        const { data, error } = await supabase
+          .from('agreements')
+          .upsert({
+            project_id: currentProject.id,
+            creator_vision: currentProject.creator_id === currentUser.id ? userVision : partnerVision,
+            partner_vision: currentProject.creator_id === currentUser.id ? partnerVision : userVision,
+            creator_signed: currentProject.creator_id === currentUser.id,
+            partner_signed: currentProject.partner_id === currentUser.id,
+            creator_signed_at: currentProject.creator_id === currentUser.id ? now : null,
+            partner_signed_at: currentProject.partner_id === currentUser.id ? now : null
+          });
+
+        if (error) {
+          showMessage(`Failed to sign: ${error.message}`, 'error');
+          return;
+        }
+
+        // Update UI
+        document.getElementById('userSignature').classList.remove('hidden');
+        document.getElementById('userSignDate').textContent = new Date().toLocaleDateString();
+        document.getElementById('signBtn').textContent = '✅ You have signed!';
+        document.getElementById('signBtn').disabled = true;
+        
+        showMessage("✅ Agreement signed! Waiting for partner to sign...");
+        
+        // Check if both have signed
+        checkAgreementCompletion();
+        
+      } catch (error) {
+        showMessage("Failed to sign agreement.", 'error');
+      } finally {
+        setButtonLoading('signBtn', false);
+      }
+    }
+
+    async function checkAgreementCompletion() {
+      try {
+        const { data: agreement } = await supabase
+          .from('agreements')
+          .select('*')
+          .eq('project_id', currentProject.id)
+          .single();
+
+        if (agreement && agreement.creator_signed && agreement.partner_signed) {
+          // Both signed - show download button and save to history
+          document.getElementById('downloadBtn').classList.remove('hidden');
+          document.getElementById('partnerSignature').classList.remove('hidden');
+          document.getElementById('partnerSignDate').textContent = new Date(agreement.partner_signed_at).toLocaleDateString();
+          
+          showMessage("🎉 Agreement completed! Both partners have signed.");
+          
+          // Save to history
+          await saveToHistory(agreement);
+          loadAgreementHistory();
+        }
+      } catch (error) {
+        console.error('Error checking agreement completion:', error);
+      }
+    }
+
+    async function saveToHistory(agreement) {
+      try {
+        await supabase
+          .from('agreement_history')
+          .insert({
+            project_id: currentProject.id,
+            creator_id: currentProject.creator_id,
+            partner_id: currentProject.partner_id,
+            creator_vision: agreement.creator_vision,
+            partner_vision: agreement.partner_vision,
+            creator_signed_at: agreement.creator_signed_at,
+            partner_signed_at: agreement.partner_signed_at
+          });
+      } catch (error) {
+        console.error('Error saving to history:', error);
+      }
+    }
+
+    function downloadFinalAgreement() {
+      const userVision = document.getElementById('finalUserVision').innerText;
+      const partnerVision = document.getElementById('finalPartnerVision').innerText;
+      const userDate = document.getElementById('userSignDate').textContent;
+      const partnerDate = document.getElementById('partnerSignDate').textContent;
+
+      const content = `=== ACCOUNTABILITY AGREEMENT ===
+
+Date: ${new Date().toLocaleDateString()}
+Project Code: ${currentProject.project_code}
+
+--- YOUR VISION ---
+${userVision}
+
+--- PARTNER'S VISION ---
+${partnerVision}
+
+--- DIGITAL SIGNATURES ---
+✓ Signed by you on ${userDate}
+✓ Signed by your partner on ${partnerDate}
+
+This agreement represents our mutual commitment to support each other in achieving our goals.
+
+Generated by Accountability Partners App
+`;
+
+      const blob = new Blob([content], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `signed-agreement-${currentProject.project_code}.txt`;
+      link.click();
+      showMessage("📋 Signed agreement downloaded!");
+    }
+
+    async function loadAgreementHistory() {
+      if (!currentUser) return;
+      
+      try {
+        const { data: history } = await supabase
+          .from('agreement_history')
+          .select('*')
+          .or(`creator_id.eq.${currentUser.id},partner_id.eq.${currentUser.id}`)
+          .order('created_at', { ascending: false });
+
+        const tbody = document.querySelector('#agreementHistory tbody');
+        const emptyState = document.getElementById('emptyHistory');
+        
+        tbody.innerHTML = '';
+        
+        if (!history || history.length === 0) {
+          emptyState.classList.remove('hidden');
+          document.getElementById('historySection').classList.add('hidden');
+          return;
+        }
+
+        emptyState.classList.add('hidden');
+        
+        history.forEach(item => {
+          const row = document.createElement('tr');
+          const isCreator = item.creator_id === currentUser.id;
+          const partnerVision = isCreator ? item.partner_vision : item.creator_vision;
+          const userVision = isCreator ? item.creator_vision : item.partner_vision;
+          
+          row.innerHTML = `
+            <td>${new Date(item.created_at).toLocaleDateString()}</td>
+            <td>Partner</td>
+            <td>${userVision.substring(0, 100)}${userVision.length > 100 ? '...' : ''}</td>
+            <td>${partnerVision.substring(0, 100)}${partnerVision.length > 100 ? '...' : ''}</td>
+            <td><span style="color: #4CAF50; font-weight: 500;">✓ Completed</span></td>
+          `;
+          tbody.appendChild(row);
+        });
+        
+        // Show history section
+        document.getElementById('historySection').classList.remove('hidden');
+        
+      } catch (error) {
+        console.error('Error loading agreement history:', error);
+      }
     }
   </script>
 </body>
