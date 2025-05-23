@@ -631,15 +631,18 @@ We commit to supporting each other in achieving these goals.
         // Create or update agreement with user's signature
         const { data, error } = await supabase
           .from('agreements')
-          .upsert({
-            project_id: currentProject.id,
-            creator_vision: currentProject.creator_id === currentUser.id ? userVision : partnerVision,
-            partner_vision: currentProject.creator_id === currentUser.id ? partnerVision : userVision,
-            creator_signed: currentProject.creator_id === currentUser.id,
-            partner_signed: currentProject.partner_id === currentUser.id,
-            creator_signed_at: currentProject.creator_id === currentUser.id ? now : null,
-            partner_signed_at: currentProject.partner_id === currentUser.id ? now : null
-          });
+          .upsert(
+            {
+              project_id: currentProject.id,
+              creator_vision: currentProject.creator_id === currentUser.id ? userVision : partnerVision,
+              partner_vision: currentProject.creator_id === currentUser.id ? partnerVision : userVision,
+              creator_signed: currentProject.creator_id === currentUser.id,
+              partner_signed: currentProject.partner_id === currentUser.id,
+              creator_signed_at: currentProject.creator_id === currentUser.id ? now : null,
+              partner_signed_at: currentProject.partner_id === currentUser.id ? now : null
+            },
+            { onConflict: 'project_id' }
+          );
 
         if (error) {
           showMessage(`Failed to sign: ${error.message}`, 'error');
