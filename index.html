@@ -253,6 +253,7 @@
         <div class="agreement-actions">
           <button onclick="signAgreement()" id="signBtn" style="width: 100%;">✍️ Sign Agreement</button>
           <button onclick="downloadFinalAgreement()" id="downloadBtn" class="hidden" style="width: 100%; margin-top: 1rem;">📋 Download Signed Agreement</button>
+          <button onclick="checkDatabaseStatus()" id="checkDbBtn" style="width: 100%; margin-top: 1rem; background: #6c757d;">🔍 Check Database Status</button>
         </div>
       </div>
 
@@ -767,15 +768,7 @@ We commit to supporting each other in achieving these goals.
         document.getElementById('signBtn').textContent = '✅ You have signed!';
         document.getElementById('signBtn').disabled = true;
         
-        // Add a button to check database status
-        if (!document.getElementById('checkDbBtn')) {
-          const checkBtn = document.createElement('button');
-          checkBtn.id = 'checkDbBtn';
-          checkBtn.textContent = '🔍 Check Database Status';
-          checkBtn.onclick = checkDatabaseStatus;
-          checkBtn.style.cssText = 'margin-top: 1rem; width: 100%; background: #6c757d;';
-          document.querySelector('.agreement-actions').appendChild(checkBtn);
-        }
+        // Database status button is now permanently available
         
         showMessage("✅ Agreement signed! Waiting for partner to sign...");
         
