@@ -498,7 +498,10 @@
 
       setButtonLoading('saveVisionBtn', true);
       try {
-        const { error } = await supabase.from('visions').upsert([{ project_id: currentProject.id, user_id: currentUser.id, vision_text: vision, status: 'draft' }]);
+        const { error } = await supabase.from('visions').upsert(
+          [{ project_id: currentProject.id, user_id: currentUser.id, vision_text: vision, status: 'draft' }],
+          { onConflict: 'project_id,user_id' }
+        );
         if (error) showMessage(error.message, 'error');
         else {
           document.getElementById("result").classList.remove("hidden");
