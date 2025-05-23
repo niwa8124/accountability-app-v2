@@ -295,27 +295,49 @@
       
       setButtonLoading('joinBtn', true);
       try {
+        // First, let's check if the project exists
+        console.log('Looking for project:', projectCode);
+        const { data: existingProject, error: findError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('project_code', projectCode)
+          .single();
+        
+        console.log('Found project:', existingProject, 'Error:', findError);
+        
+        if (findError) {
+          showMessage("Project code not found. Check the code and try again.", 'error');
+          return;
+        }
+        
+        if (existingProject.partner_id) {
+          showMessage("This project already has a partner.", 'error');
+          return;
+        }
+        
+        if (existingProject.creator_id === currentUser.id) {
+          showMessage("You cannot join your own project.", 'error');
+          return;
+        }
+        
+        // Now update the project
         const { data, error } = await supabase
           .from('projects')
           .update({ partner_id: currentUser.id })
           .eq('project_code', projectCode)
-          .is('partner_id', null)
           .select('*')
           .single();
+          
         if (error) {
-          console.error('Join project error:', error);
-          if (error.code === 'PGRST116') {
-            showMessage("Project not found or already has a partner.", 'error');
-          } else {
-            showMessage(`Failed to join: ${error.message}`, 'error');
-          }
-        }
-        else {
+          console.error('Update project error:', error);
+          showMessage(`Failed to join: ${error.message}`, 'error');
+        } else {
           currentProject = data;
-          showMessage("🤝 Joined project!");
+          showMessage("🤝 Successfully joined project!");
           updateUIBasedOnProject();
         }
       } catch (error) {
+        console.error('Join project catch:', error);
         showMessage("Failed to join project.", 'error');
       } finally {
         setButtonLoading('joinBtn', false);
