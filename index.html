@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Accountability Partners - Fresh Deploy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+    .header { text-align: center; margin-bottom: 3rem; color: white; }
+    .header h1 { font-size: 3rem; font-weight: 700; margin-bottom: 0.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    .header p { font-size: 1.3rem; opacity: 0.9; font-weight: 300; }
+    .card { background: white; border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+    .auth-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+    .login-card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+    h2 { color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem; font-weight: 600; }
+    h3 { color: #34495e; font-size: 1.2rem; margin-bottom: 1rem; font-weight: 500; }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #555; }
+    input, textarea {
+      width: 100%; padding: 0.75rem; border: 2px solid #e1e5e9; border-radius: 8px;
+      font-size: 1rem; transition: border-color 0.3s ease, box-shadow 0.3s ease; font-family: inherit;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    textarea { min-height: 120px; resize: vertical; }
+    .login-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .login-form input { flex: 1; min-width: 150px; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;
+      padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: all 0.3s ease; white-space: nowrap;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    button.secondary { background: #6c757d; }
+    button.logout { background: #dc3545; padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .success-message { background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); border: 2px solid #28a745; border-radius: 8px; padding: 1rem; margin: 1rem 0; color: #155724; }
+    .error-message { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); border: 2px solid #dc3545; border-radius: 8px; padding: 1rem; margin: 1rem 0; color: #721c24; }
+    .user-info { background: rgba(255, 255, 255, 0.1); padding: 0.5rem 1rem; border-radius: 8px; color: white; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .project-setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1rem; }
+    .vision-result { background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%); border: 2px solid #667eea; border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; white-space: pre-wrap; }
+    .partner-visions { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
+    .vision-box { padding: 1.5rem; border-radius: 12px; min-height: 120px; white-space: pre-wrap; }
+    .user-vision-box { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #2196f3; }
+    .partner-vision-box { background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%); border: 2px solid #ff9800; }
+    .project-info { background: #f0f8ff; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 2px solid #667eea; }
+    .hidden { display: none; }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 768px) {
+      .container { padding: 1rem; }
+      .header h1 { font-size: 2rem; }
+      .auth-section, .project-setup-grid, .partner-visions { grid-template-columns: 1fr; }
+      .user-info { flex-direction: column; gap: 0.5rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Accountability Partners</h1>
+      <p>Clarify your goals. Commit together. Stay on track.</p>
+      <p style="font-size: 1rem; margin-top: 1rem;">✨ Working Version with Step Flow</p>
+    </header>
+
+    <div id="userInfo" class="user-info hidden">
+      <span>Welcome, <span id="userEmail"></span>!</span>
+      <button onclick="logout()" class="logout">Logout</button>
+    </div>
+
+    <div id="authSection" class="auth-section">
+      <div class="login-card">
+        <h2>🔐 Create Account / Login</h2>
+        <div class="form-group">
+          <input type="email" id="email" placeholder="Email" />
+        </div>
+        <div class="form-group">
+          <input type="password" id="password" placeholder="Password (6+ characters)" />
+        </div>
+        <div class="login-form">
+          <button onclick="createAccount()" id="signupBtn">Sign Up</button>
+          <button onclick="login()" class="secondary" id="loginBtn">Login</button>
+        </div>
+      </div>
+      <div class="login-card">
+        <h2>ℹ️ How It Works</h2>
+        <p style="color: #666;">1. Create account → 2. Generate project code → 3. Share with partner → 4. Draft visions → 5. Support each other!</p>
+      </div>
+    </div>
+
+    <div id="mainContent" class="hidden">
+      <div id="projectSetup" class="card">
+        <h2>🔗 Step 1: Create or Join a Project</h2>
+        <p style="margin-bottom: 1.5rem; color: #666;">Create a new project or join your partner's project.</p>
+        <div class="project-setup-grid">
+          <div>
+            <h3>Create New Project</h3>
+            <button onclick="generateProjectCode()" id="generateBtn" style="width: 100%;">🎯 Generate Code</button>
+          </div>
+          <div>
+            <h3>Join Existing Project</h3>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="projectCodeInput" placeholder="Enter code..." style="flex: 1;" />
+              <button onclick="joinProject()" id="joinBtn">Join</button>
+            </div>
+          </div>
+        </div>
+        <div id="currentProjectInfo" class="project-info hidden">
+          <strong>✅ Active Project:</strong> <span id="currentProjectCode"></span>
+        </div>
+      </div>
+
+      <div id="visionSection" class="card hidden">
+        <h2>🎯 Step 2: Draft Your Vision</h2>
+        <p style="margin-bottom: 1.5rem; color: #666;">Write your accountability goals.</p>
+        <div class="form-group">
+          <label for="vision">Your vision:</label>
+          <textarea id="vision" placeholder="E.g. I want to write a book and exercise 3x per week..."></textarea>
+        </div>
+        <button onclick="submitVision()" id="saveVisionBtn">💾 Save Vision</button>
+        <div id="result" class="vision-result hidden"></div>
+      </div>
+
+      <div id="partnersSection" class="card hidden">
+        <h2>🤝 Step 3: Partner Visions</h2>
+        <div class="partner-visions">
+          <div>
+            <h3>Your Vision</h3>
+            <div id="userVisionDisplay" class="vision-box user-vision-box">Your vision...</div>
+          </div>
+          <div>
+            <h3>Partner's Vision</h3>
+            <div id="partnerVisionDisplay" class="vision-box partner-vision-box">Waiting for partner...</div>
+          </div>
+        </div>
+        <button onclick="downloadCombinedVision()" style="width: 100%;">📋 Download Agreement</button>
+      </div>
+    </div>
+
+    <div id="messageContainer"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://ndechcnsxhvctjpcfood.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kZWNoY25zeGh2Y3RqcGNmb29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5ODI0NjAsImV4cCI6MjA2MzU1ODQ2MH0.ExEG273_fdnwQk3Syg2_Df9dxY0H_4F4wkkOJJypgVA';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { redirectTo: window.location.origin } });
+
+    let currentUser = null;
+    let currentProject = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('✅ Fresh app loaded');
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      if (hashParams.get('type') === 'signup') showMessage('✅ Email confirmed!');
+      initializeAuth();
+    });
+
+    function initializeAuth() {
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          currentUser = session.user;
+          showMainApp();
+        } else {
+          currentUser = null;
+          showAuthSection();
+        }
+      });
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) { currentUser = user; showMainApp(); }
+      });
+    }
+
+    function showMainApp() {
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+      document.getElementById('userInfo').classList.remove('hidden');
+      document.getElementById('userEmail').textContent = currentUser.email;
+      loadUserData();
+    }
+
+    function showAuthSection() {
+      document.getElementById('authSection').classList.remove('hidden');
+      document.getElementById('mainContent').classList.add('hidden');
+      document.getElementById('userInfo').classList.add('hidden');
+    }
+
+    function updateUIBasedOnProject() {
+      if (currentProject) {
+        document.getElementById('currentProjectInfo').classList.remove('hidden');
+        document.getElementById('currentProjectCode').textContent = currentProject.project_code;
+        document.getElementById('visionSection').classList.remove('hidden');
+        loadVisions();
+      } else {
+        document.getElementById('projectSetup').classList.remove('hidden');
+        document.getElementById('visionSection').classList.add('hidden');
+        document.getElementById('partnersSection').classList.add('hidden');
+      }
+    }
+
+    function showMessage(message, type = 'info') {
+      const container = document.getElementById('messageContainer');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `${type === 'error' ? 'error-message' : 'success-message'} fade-in`;
+      messageDiv.textContent = message;
+      container.appendChild(messageDiv);
+      setTimeout(() => messageDiv.remove(), 5000);
+    }
+
+    function setButtonLoading(buttonId, loading) {
+      const button = document.getElementById(buttonId);
+      button.disabled = loading;
+      if (loading) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = 'Loading...';
+      } else {
+        button.textContent = button.dataset.originalText;
+      }
+    }
+
+    async function createAccount() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      if (!email || !password) return showMessage("Enter email and password.", 'error');
+      if (password.length < 6) return showMessage("Password must be 6+ characters.", 'error');
+      
+      setButtonLoading('signupBtn', true);
+      try {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) showMessage(error.message, 'error');
+        else showMessage("🎉 Account created! Check your email.");
+      } catch (error) {
+        showMessage("Failed to create account.", 'error');
+      } finally {
+        setButtonLoading('signupBtn', false);
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      if (!email || !password) return showMessage("Enter email and password.", 'error');
+      
+      setButtonLoading('loginBtn', true);
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) showMessage(error.message, 'error');
+        else showMessage("Welcome back! 🎉");
+      } catch (error) {
+        showMessage("Login failed.", 'error');
+      } finally {
+        setButtonLoading('loginBtn', false);
+      }
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      currentUser = null;
+      currentProject = null;
+      showMessage("Logged out!");
+    }
+
+    async function generateProjectCode() {
+      if (!currentUser) return showMessage("Please log in first.", 'error');
+      setButtonLoading('generateBtn', true);
+      try {
+        const { data: code, error: codeError } = await supabase.rpc('generate_project_code');
+        if (codeError) return showMessage("Failed to generate code.", 'error');
+
+        const { data, error } = await supabase.from('projects').insert([{ project_code: code, creator_id: currentUser.id }]).select().single();
+        if (error) showMessage(error.message, 'error');
+        else {
+          currentProject = data;
+          showMessage(`🎯 Code: ${code}\nShare with your partner!`);
+          updateUIBasedOnProject();
+        }
+      } catch (error) {
+        showMessage("Failed to generate code.", 'error');
+      } finally {
+        setButtonLoading('generateBtn', false);
+      }
+    }
+
+    async function joinProject() {
+      const projectCode = document.getElementById('projectCodeInput').value.trim();
+      if (!currentUser) return showMessage("Please log in first.", 'error');
+      if (!projectCode) return showMessage("Enter a project code.", 'error');
+      
+      setButtonLoading('joinBtn', true);
+      try {
+        const { data, error } = await supabase.from('projects').update({ partner_id: currentUser.id }).eq('project_code', projectCode).is('partner_id', null).select().single();
+        if (error) showMessage("Failed to join. Check the code.", 'error');
+        else {
+          currentProject = data;
+          showMessage("🤝 Joined project!");
+          updateUIBasedOnProject();
+        }
+      } catch (error) {
+        showMessage("Failed to join project.", 'error');
+      } finally {
+        setButtonLoading('joinBtn', false);
+      }
+    }
+
+    async function submitVision() {
+      const vision = document.getElementById("vision").value.trim();
+      if (!vision) return showMessage("Enter your vision.", 'error');
+      if (!currentUser || !currentProject) return showMessage("Login and join project first.", 'error');
+
+      setButtonLoading('saveVisionBtn', true);
+      try {
+        const { error } = await supabase.from('visions').upsert([{ project_id: currentProject.id, user_id: currentUser.id, vision_text: vision, status: 'draft' }]);
+        if (error) showMessage(error.message, 'error');
+        else {
+          document.getElementById("result").classList.remove("hidden");
+          document.getElementById("result").innerText = vision;
+          document.getElementById('userVisionDisplay').innerText = vision;
+          showMessage("✅ Vision saved!");
+          loadVisions();
+        }
+      } catch (error) {
+        showMessage("Failed to save vision.", 'error');
+      } finally {
+        setButtonLoading('saveVisionBtn', false);
+      }
+    }
+
+    async function loadUserData() {
+      if (!currentUser) return;
+      try {
+        const { data: projects } = await supabase.from('projects').select('*').or(`creator_id.eq.${currentUser.id},partner_id.eq.${currentUser.id}`);
+        currentProject = projects?.[0] || null;
+        updateUIBasedOnProject();
+      } catch (error) {
+        updateUIBasedOnProject();
+      }
+    }
+
+    async function loadVisions() {
+      if (!currentProject) return;
+      try {
+        const { data: visions } = await supabase.from('visions').select('*').eq('project_id', currentProject.id);
+        let userVision = null, partnerVision = null;
+        visions?.forEach(vision => {
+          if (vision.user_id === currentUser.id) {
+            userVision = vision;
+            document.getElementById('vision').value = vision.vision_text;
+            document.getElementById('userVisionDisplay').innerText = vision.vision_text;
+          } else {
+            partnerVision = vision;
+            document.getElementById('partnerVisionDisplay').innerText = vision.vision_text;
+          }
+        });
+        if (userVision && partnerVision) document.getElementById('partnersSection').classList.remove('hidden');
+      } catch (error) {
+        console.error('Failed to load visions:', error);
+      }
+    }
+
+    function downloadCombinedVision() {
+      const userVision = document.getElementById('userVisionDisplay').innerText;
+      const partnerVision = document.getElementById('partnerVisionDisplay').innerText;
+      if (!userVision || partnerVision === 'Waiting for partner...') return showMessage("Both need to submit visions.", 'error');
+
+      const content = `=== ACCOUNTABILITY AGREEMENT ===
+Date: ${new Date().toLocaleDateString()}
+Project: ${currentProject.project_code}
+
+YOUR VISION:
+${userVision}
+
+PARTNER'S VISION:
+${partnerVision}
+
+COMMITMENT:
+We commit to supporting each other in achieving these goals.
+`;
+      const blob = new Blob([content], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `agreement-${currentProject.project_code}.txt`;
+      link.click();
+      showMessage("📋 Downloaded!");
+    }
+  </script>
+</body>
+</html>
