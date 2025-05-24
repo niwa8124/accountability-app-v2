@@ -169,27 +169,28 @@
         </div>
       </div>
       <div id="projectSetup" class="card">
-        <h2>🔗 Step 1: Create or Join an Accountability Period</h2>
-        <p style="margin-bottom: 1.5rem; color: #666;">Start a new accountability period or join your partner's existing one.</p>
+        <h2>🔗 Step 1: Create or Join an Accountability Agreement</h2>
+        <p style="margin-bottom: 1.5rem; color: #666;">Start a new accountability agreement or join your partner's existing one.</p>
         <div class="project-setup-grid">
           <div>
-            <h3>Create New Period</h3>
+            <h3>Create New Agreement</h3>
             <div style="margin-bottom: 1rem;">
               <input type="text" id="customCodeInput" placeholder="Custom code (optional)" style="width: 100%; margin-bottom: 0.5rem;" maxlength="10" />
-              <input type="text" id="periodDescription" placeholder="Period description (e.g., 'Q1 Health Goals')" style="width: 100%; margin-bottom: 0.5rem;" />
-              <select id="reviewFrequency" style="width: 100%; margin-bottom: 0.5rem;">
-                <option value="monthly">Monthly Review</option>
-                <option value="quarterly" selected>Quarterly Review (3 months)</option>
-                <option value="yearly">Yearly Review</option>
-                <option value="custom">Custom Period</option>
-              </select>
-              <input type="date" id="reviewDate" style="width: 100%; margin-bottom: 0.5rem;" />
-              <button onclick="createAccountabilityPeriod()" id="createBtn" style="width: 100%;">Create Period</button>
+              <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <select id="reviewFrequency" style="flex: 1;">
+                  <option value="monthly">Monthly Review</option>
+                  <option value="quarterly" selected>Quarterly Review (3 months)</option>
+                  <option value="yearly">Yearly Review</option>
+                  <option value="custom">Custom Period</option>
+                </select>
+                <input type="date" id="reviewDate" style="flex: 1;" />
+              </div>
+              <button onclick="createAccountabilityAgreement()" id="createBtn" style="width: 100%;">Create Agreement</button>
             </div>
-            <p style="font-size: 0.9rem; color: #666; margin: 0;">Set your review timeline and goals</p>
+            <p style="font-size: 0.9rem; color: #666; margin: 0;">Set your review timeline and commitment duration</p>
           </div>
           <div>
-            <h3>Join Existing Period</h3>
+            <h3>Join Existing Agreement</h3>
             <div style="display: flex; gap: 0.5rem;">
               <input type="text" id="projectCodeInput" placeholder="Enter code..." style="flex: 1;" />
               <button onclick="joinProject()" id="joinBtn">Join</button>
@@ -221,23 +222,28 @@
 
       <div id="reviewSection" class="card hidden">
         <h2>🔍 Step 3: Review Visions Together</h2>
-        <p style="margin-bottom: 1.5rem; color: #666;">Review both visions and discuss any refinements needed before signing.</p>
+        <div id="reviewInstructions" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
+          <p style="margin: 0; color: #555;"><strong>📞 Next Steps:</strong> Once both visions are complete, schedule a live conversation (video call, phone, or in-person) to discuss your commitments and ensure you're both aligned before signing.</p>
+        </div>
         <div class="partner-visions">
           <div>
             <h3>Your Vision</h3>
             <div id="userVisionDisplay" class="vision-box user-vision-box">Your vision...</div>
             <div class="vision-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
               <button onclick="editVision()" class="secondary" style="flex: 1;">✏️ Edit My Vision</button>
-              <button onclick="proceedToSigning()" id="proceedBtn" style="flex: 1;">✅ Ready to Sign</button>
+              <button onclick="proceedToSigning()" id="proceedBtn" style="flex: 1;" class="hidden">✅ Ready to Sign</button>
             </div>
           </div>
           <div>
             <h3>Partner's Vision</h3>
             <div id="partnerVisionDisplay" class="vision-box partner-vision-box">Waiting for partner...</div>
-            <div style="margin-top: 1rem; color: #666; font-style: italic; text-align: center;">
-              Waiting for your partner to review and be ready to sign...
+            <div id="partnerStatus" style="margin-top: 1rem; color: #666; font-style: italic; text-align: center;">
+              Waiting for your partner to complete their vision...
             </div>
           </div>
+        </div>
+        <div id="bothVisionsComplete" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: #f0f8ff; border-radius: 8px; border: 2px solid #4CAF50;">
+          <p style="margin: 0; color: #2c5530;"><strong>🎉 Both visions are complete!</strong> Now schedule a time to meet and discuss your commitments. When you're both ready to formalize your agreement, click "Ready to Sign" below your vision.</p>
         </div>
       </div>
 
@@ -364,11 +370,25 @@
       });
     }
 
-    function showMainApp() {
+    async function showMainApp() {
       document.getElementById('authSection').classList.add('hidden');
       document.getElementById('mainContent').classList.remove('hidden');
       document.getElementById('userInfo').classList.remove('hidden');
-      document.getElementById('userEmail').textContent = currentUser.email;
+      
+      // Try to get user's name, fallback to email
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', currentUser.id)
+          .single();
+        
+        const displayName = profile?.full_name || currentUser.email;
+        document.getElementById('userEmail').textContent = displayName;
+      } catch (error) {
+        document.getElementById('userEmail').textContent = currentUser.email;
+      }
+      
       loadUserData();
     }
 
@@ -428,10 +448,9 @@
             document.getElementById('visionSection').classList.remove('hidden');
             updateStepIndicator(2);
           } else if (showSigningStep) {
-            // Step 4: Agreement exists, go to signing
-            document.getElementById('agreementSection').classList.remove('hidden');
-            updateStepIndicator(4);
-            checkExistingSignatures();
+            // Check if user has clicked ready to sign, otherwise stay in review
+            document.getElementById('reviewSection').classList.remove('hidden');
+            updateStepIndicator(3);
           } else {
             // Step 3: Both have visions, can review
             document.getElementById('reviewSection').classList.remove('hidden');
@@ -538,11 +557,10 @@
       showMessage("Logged out!");
     }
 
-    async function createAccountabilityPeriod() {
+    async function createAccountabilityAgreement() {
       if (!currentUser) return showMessage("Please log in first.", 'error');
       
       const customCode = document.getElementById('customCodeInput').value.trim().toUpperCase();
-      const description = document.getElementById('periodDescription').value.trim();
       const frequency = document.getElementById('reviewFrequency').value;
       const reviewDate = document.getElementById('reviewDate').value;
       
@@ -583,7 +601,7 @@
           .insert([{ 
             project_code: projectCode, 
             creator_id: currentUser.id,
-            period_description: description || `${frequency} accountability period`,
+            period_description: `${frequency} accountability agreement`,
             review_frequency: frequency,
             review_date: reviewDate
           }])
@@ -595,12 +613,11 @@
           currentProject = data;
           // Clear form
           document.getElementById('customCodeInput').value = '';
-          document.getElementById('periodDescription').value = '';
-          showMessage(`🎯 Accountability period created! Code: ${projectCode}\nShare with your partner!`);
+          showMessage(`🎯 Accountability agreement created! Code: ${projectCode}\nShare with your partner!`);
           updateUIBasedOnProject();
         }
       } catch (error) {
-        showMessage("Failed to create accountability period.", 'error');
+        showMessage("Failed to create accountability agreement.", 'error');
       } finally {
         setButtonLoading('createBtn', false);
       }
@@ -726,7 +743,20 @@
             document.getElementById('partnerVisionDisplay').innerText = vision.vision_text;
           }
         });
-        if (userVision && partnerVision) {
+        // Update partner status and show ready to sign button when appropriate
+        if (userVision && userVision !== 'Your vision...') {
+          if (partnerVision && partnerVision !== 'Waiting for partner...') {
+            // Both visions complete
+            document.getElementById('partnerStatus').innerHTML = `<span style="color: #4CAF50;">✅ Partner has completed their vision</span>`;
+            document.getElementById('proceedBtn').classList.remove('hidden');
+            document.getElementById('bothVisionsComplete').classList.remove('hidden');
+          } else {
+            // User done, waiting for partner
+            document.getElementById('partnerStatus').innerHTML = `<span style="color: #ff9800;">⏳ Your partner has been notified to complete their vision</span>`;
+          }
+        }
+        
+        if (userVision && partnerVision && userVision !== 'Your vision...' && partnerVision !== 'Waiting for partner...') {
           document.getElementById('reviewSection').classList.remove('hidden');
           updateStepIndicator(3);
         }
@@ -883,7 +913,8 @@ We commit to supporting each other in achieving these goals.
         
         // Database status button is now permanently available
         
-        showMessage("✅ Agreement signed! Waiting for partner to sign...");
+        const { partnerName } = await getUserNames();
+        showMessage(`✅ Agreement signed! Waiting for ${partnerName} to sign...`);
         
         // Check if both have signed
         checkAgreementCompletion();
@@ -908,26 +939,35 @@ We commit to supporting each other in achieving these goals.
         if (agreement) {
           const isCreator = currentProject.creator_id === currentUser.id;
           
-          // Show partner's signature if they have signed
+          // Show partner's signature if they have signed and update status message
           if (isCreator && agreement.partner_signed) {
             document.getElementById('partnerSignature').classList.remove('hidden');
             document.getElementById('partnerSignDate').textContent = new Date(agreement.partner_signed_at).toLocaleDateString();
+            const { partnerName } = await getUserNames();
+            if (document.getElementById('partnerStatus')) {
+              document.getElementById('partnerStatus').innerHTML = `<span style="color: #4CAF50;">✅ ${partnerName} has signed the agreement. It's your turn to sign.</span>`;
+            }
           } else if (!isCreator && agreement.creator_signed) {
             document.getElementById('partnerSignature').classList.remove('hidden');
             document.getElementById('partnerSignDate').textContent = new Date(agreement.creator_signed_at).toLocaleDateString();
+            const { partnerName } = await getUserNames();
+            if (document.getElementById('partnerStatus')) {
+              document.getElementById('partnerStatus').innerHTML = `<span style="color: #4CAF50;">✅ ${partnerName} has signed the agreement. It's your turn to sign.</span>`;
+            }
           }
 
           // Check if both have signed
           if (agreement.creator_signed && agreement.partner_signed) {
             document.getElementById('downloadBtn').classList.remove('hidden');
-            showMessage("🎉 Agreement completed! Both partners have signed.");
+            const { partnerName } = await getUserNames();
+            showMessage(`🎉 Agreement completed! You and ${partnerName} have both signed.`);
             
             // Save to history
             await saveToHistory(agreement);
             loadAgreementHistory();
           } else {
-            const remainingPartner = isCreator ? 'partner' : 'creator';
-            showMessage(`✅ You have signed! Waiting for ${remainingPartner} to sign...`);
+            const { partnerName } = await getUserNames();
+            showMessage(`✅ You have signed! Waiting for ${partnerName} to sign...`);
           }
         }
       } catch (error) {
@@ -1005,7 +1045,7 @@ We commit to supporting each other in achieving these goals.
 
       const reviewDate = currentProject.review_date ? new Date(currentProject.review_date).toLocaleDateString() : 'Not set';
       const frequency = currentProject.review_frequency || 'quarterly';
-      const description = currentProject.period_description || 'Accountability Period';
+      const description = currentProject.period_description || 'Accountability Agreement';
 
       const content = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1217,6 +1257,41 @@ This partnership is built on trust, mutual support, and shared growth.
       } catch (error) {
         console.log('No existing agreement found or error:', error);
       }
+    }
+
+    // Helper function to get user names
+    async function getUserNames() {
+      let userName = 'You';
+      let partnerName = 'Your Partner';
+      
+      try {
+        // Get current user's name
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (userProfile?.full_name) userName = userProfile.full_name;
+
+        // Get partner's name
+        const isCreator = currentProject.creator_id === currentUser.id;
+        const partnerId = isCreator ? currentProject.partner_id : currentProject.creator_id;
+        
+        if (partnerId) {
+          const { data: partnerProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', partnerId)
+            .single();
+          
+          if (partnerProfile?.full_name) partnerName = partnerProfile.full_name;
+        }
+      } catch (error) {
+        console.log('Could not fetch names:', error);
+      }
+      
+      return { userName, partnerName };
     }
 
     // Debug function to check database status
