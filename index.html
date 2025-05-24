@@ -121,6 +121,9 @@
       <div class="login-card">
         <h2>🔐 Create Account / Login</h2>
         <div class="form-group">
+          <input type="text" id="fullName" placeholder="Your Name" />
+        </div>
+        <div class="form-group">
           <input type="email" id="email" placeholder="Email" />
         </div>
         <div class="form-group">
@@ -166,19 +169,27 @@
         </div>
       </div>
       <div id="projectSetup" class="card">
-        <h2>🔗 Step 1: Create or Join a Project</h2>
-        <p style="margin-bottom: 1.5rem; color: #666;">Create a new project or join your partner's project.</p>
+        <h2>🔗 Step 1: Create or Join an Accountability Period</h2>
+        <p style="margin-bottom: 1.5rem; color: #666;">Start a new accountability period or join your partner's existing one.</p>
         <div class="project-setup-grid">
           <div>
-            <h3>Create New Project</h3>
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-              <input type="text" id="customCodeInput" placeholder="Custom code (optional)" style="flex: 1;" maxlength="10" />
-              <button onclick="createProject()" id="createBtn">Create</button>
+            <h3>Create New Period</h3>
+            <div style="margin-bottom: 1rem;">
+              <input type="text" id="customCodeInput" placeholder="Custom code (optional)" style="width: 100%; margin-bottom: 0.5rem;" maxlength="10" />
+              <input type="text" id="periodDescription" placeholder="Period description (e.g., 'Q1 Health Goals')" style="width: 100%; margin-bottom: 0.5rem;" />
+              <select id="reviewFrequency" style="width: 100%; margin-bottom: 0.5rem;">
+                <option value="monthly">Monthly Review</option>
+                <option value="quarterly" selected>Quarterly Review (3 months)</option>
+                <option value="yearly">Yearly Review</option>
+                <option value="custom">Custom Period</option>
+              </select>
+              <input type="date" id="reviewDate" style="width: 100%; margin-bottom: 0.5rem;" />
+              <button onclick="createAccountabilityPeriod()" id="createBtn" style="width: 100%;">Create Period</button>
             </div>
-            <p style="font-size: 0.9rem; color: #666; margin: 0;">Leave blank to auto-generate</p>
+            <p style="font-size: 0.9rem; color: #666; margin: 0;">Set your review timeline and goals</p>
           </div>
           <div>
-            <h3>Join Existing Project</h3>
+            <h3>Join Existing Period</h3>
             <div style="display: flex; gap: 0.5rem;">
               <input type="text" id="projectCodeInput" placeholder="Enter code..." style="flex: 1;" />
               <button onclick="joinProject()" id="joinBtn">Join</button>
@@ -215,15 +226,18 @@
           <div>
             <h3>Your Vision</h3>
             <div id="userVisionDisplay" class="vision-box user-vision-box">Your vision...</div>
+            <div class="vision-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+              <button onclick="editVision()" class="secondary" style="flex: 1;">✏️ Edit My Vision</button>
+              <button onclick="proceedToSigning()" id="proceedBtn" style="flex: 1;">✅ Ready to Sign</button>
+            </div>
           </div>
           <div>
             <h3>Partner's Vision</h3>
             <div id="partnerVisionDisplay" class="vision-box partner-vision-box">Waiting for partner...</div>
+            <div style="margin-top: 1rem; color: #666; font-style: italic; text-align: center;">
+              Waiting for your partner to review and be ready to sign...
+            </div>
           </div>
-        </div>
-        <div class="review-actions">
-          <button onclick="editVision()" class="secondary">✏️ Edit My Vision</button>
-          <button onclick="proceedToSigning()" id="proceedBtn">✅ Ready to Sign</button>
         </div>
       </div>
 
@@ -296,7 +310,44 @@
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       if (hashParams.get('type') === 'signup') showMessage('✅ Email confirmed!');
       initializeAuth();
+      setupReviewDateSelector();
     });
+
+    function setupReviewDateSelector() {
+      const frequencySelect = document.getElementById('reviewFrequency');
+      const reviewDateInput = document.getElementById('reviewDate');
+      
+      function updateDefaultDate() {
+        const today = new Date();
+        const frequency = frequencySelect.value;
+        let futureDate = new Date(today);
+        
+        switch(frequency) {
+          case 'monthly':
+            futureDate.setMonth(today.getMonth() + 1);
+            break;
+          case 'quarterly':
+            futureDate.setMonth(today.getMonth() + 3);
+            break;
+          case 'yearly':
+            futureDate.setFullYear(today.getFullYear() + 1);
+            break;
+          case 'custom':
+            // Let user pick custom date
+            break;
+        }
+        
+        if (frequency !== 'custom') {
+          reviewDateInput.value = futureDate.toISOString().split('T')[0];
+        }
+      }
+      
+      // Set initial date
+      updateDefaultDate();
+      
+      // Update date when frequency changes
+      frequencySelect.addEventListener('change', updateDefaultDate);
+    }
 
     function initializeAuth() {
       supabase.auth.onAuthStateChange((event, session) => {
@@ -413,9 +464,11 @@
     }
 
     async function createAccount() {
+      const fullName = document.getElementById("fullName").value.trim();
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
-      if (!email || !password) return showMessage("Enter email and password.", 'error');
+      
+      if (!fullName || !email || !password) return showMessage("Please fill in all fields.", 'error');
       if (password.length < 6) return showMessage("Password must be 6+ characters.", 'error');
       
       setButtonLoading('signupBtn', true);
@@ -432,9 +485,28 @@
           return;
         }
 
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) showMessage(error.message, 'error');
-        else showMessage("🎉 Account created! Check your email.");
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              full_name: fullName
+            }
+          }
+        });
+        
+        if (error) {
+          showMessage(error.message, 'error');
+        } else {
+          // Update the profile with the name
+          if (data.user) {
+            await supabase
+              .from('profiles')
+              .update({ full_name: fullName })
+              .eq('id', data.user.id);
+          }
+          showMessage("🎉 Account created! Check your email.");
+        }
       } catch (error) {
         showMessage("Failed to create account.", 'error');
       } finally {
@@ -466,10 +538,16 @@
       showMessage("Logged out!");
     }
 
-    async function createProject() {
+    async function createAccountabilityPeriod() {
       if (!currentUser) return showMessage("Please log in first.", 'error');
       
       const customCode = document.getElementById('customCodeInput').value.trim().toUpperCase();
+      const description = document.getElementById('periodDescription').value.trim();
+      const frequency = document.getElementById('reviewFrequency').value;
+      const reviewDate = document.getElementById('reviewDate').value;
+      
+      if (!reviewDate) return showMessage("Please select a review date.", 'error');
+      
       setButtonLoading('createBtn', true);
       
       try {
@@ -490,7 +568,7 @@
             .single();
             
           if (existingProject) {
-            showMessage("This project code already exists. Choose a different one.", 'error');
+            showMessage("This code already exists. Choose a different one.", 'error');
             return;
           }
         } else {
@@ -502,19 +580,27 @@
 
         const { data, error } = await supabase
           .from('projects')
-          .insert([{ project_code: projectCode, creator_id: currentUser.id }])
+          .insert([{ 
+            project_code: projectCode, 
+            creator_id: currentUser.id,
+            period_description: description || `${frequency} accountability period`,
+            review_frequency: frequency,
+            review_date: reviewDate
+          }])
           .select()
           .single();
           
         if (error) showMessage(error.message, 'error');
         else {
           currentProject = data;
+          // Clear form
           document.getElementById('customCodeInput').value = '';
-          showMessage(`🎯 Project created! Code: ${projectCode}\nShare with your partner!`);
+          document.getElementById('periodDescription').value = '';
+          showMessage(`🎯 Accountability period created! Code: ${projectCode}\nShare with your partner!`);
           updateUIBasedOnProject();
         }
       } catch (error) {
-        showMessage("Failed to create project.", 'error');
+        showMessage("Failed to create accountability period.", 'error');
       } finally {
         setButtonLoading('createBtn', false);
       }
@@ -882,38 +968,108 @@ We commit to supporting each other in achieving these goals.
       }
     }
 
-    function downloadFinalAgreement() {
+    async function downloadFinalAgreement() {
       const userVision = document.getElementById('finalUserVision').innerText;
       const partnerVision = document.getElementById('finalPartnerVision').innerText;
       const userDate = document.getElementById('userSignDate').textContent;
       const partnerDate = document.getElementById('partnerSignDate').textContent;
 
-      const content = `=== ACCOUNTABILITY AGREEMENT ===
+      // Get user names
+      let userName = 'You';
+      let partnerName = 'Your Partner';
+      
+      try {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (userProfile?.full_name) userName = userProfile.full_name;
 
-Date: ${new Date().toLocaleDateString()}
-Project Code: ${currentProject.project_code}
+        const isCreator = currentProject.creator_id === currentUser.id;
+        const partnerId = isCreator ? currentProject.partner_id : currentProject.creator_id;
+        
+        if (partnerId) {
+          const { data: partnerProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', partnerId)
+            .single();
+          
+          if (partnerProfile?.full_name) partnerName = partnerProfile.full_name;
+        }
+      } catch (error) {
+        console.log('Could not fetch names:', error);
+      }
 
---- YOUR VISION ---
+      const reviewDate = currentProject.review_date ? new Date(currentProject.review_date).toLocaleDateString() : 'Not set';
+      const frequency = currentProject.review_frequency || 'quarterly';
+      const description = currentProject.period_description || 'Accountability Period';
+
+      const content = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                         ACCOUNTABILITY PARTNERSHIP AGREEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 AGREEMENT DETAILS
+   • Created: ${new Date().toLocaleDateString()}
+   • Period Code: ${currentProject.project_code}
+   • Description: ${description}
+   • Review Schedule: ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+   • Next Review: ${reviewDate}
+
+👥 ACCOUNTABILITY PARTNERS
+   • ${userName}
+   • ${partnerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 ${userName.toUpperCase()}'S COMMITMENT
 ${userVision}
 
---- PARTNER'S VISION ---
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 ${partnerName.toUpperCase()}'S COMMITMENT
 ${partnerVision}
 
---- DIGITAL SIGNATURES ---
-✓ Signed by you on ${userDate}
-✓ Signed by your partner on ${partnerDate}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-This agreement represents our mutual commitment to support each other in achieving our goals.
+✍️ DIGITAL SIGNATURES
 
-Generated by Accountability Partners App
+   ✅ ${userName}
+      Signed on ${userDate}
+   
+   ✅ ${partnerName}
+      Signed on ${partnerDate}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💪 ACCOUNTABILITY COMMITMENT
+
+We, ${userName} and ${partnerName}, hereby commit to supporting each other
+in achieving the goals outlined in this agreement. We will:
+
+• Check in regularly according to our ${frequency} schedule
+• Provide honest feedback and encouragement
+• Hold each other accountable with compassion and respect
+• Celebrate successes and learn from setbacks together
+• Review and renew our commitments on ${reviewDate}
+
+This partnership is built on trust, mutual support, and shared growth.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                      Generated by Accountability Partners App
+                              ${new Date().toLocaleDateString()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
       const blob = new Blob([content], { type: "text/plain" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `signed-agreement-${currentProject.project_code}.txt`;
+      link.download = `accountability-agreement-${currentProject.project_code}-${new Date().toISOString().split('T')[0]}.txt`;
       link.click();
-      showMessage("📋 Signed agreement downloaded!");
+      showMessage("📋 Beautifully formatted agreement downloaded!");
     }
 
     async function loadAgreementHistory() {
