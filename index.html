@@ -634,13 +634,12 @@
       setButtonLoading('signupBtn', true);
       try {
         // Check if email already exists in profiles table
-        const { data: existingProfile } = await supabase
+        const { data: existingProfiles } = await supabase
           .from('profiles')
           .select('email')
-          .eq('email', email)
-          .single();
+          .eq('email', email);
           
-        if (existingProfile) {
+        if (existingProfiles && existingProfiles.length > 0) {
           showMessage("Account with this email already exists. Please use login instead.", 'error');
           return;
         }
