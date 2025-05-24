@@ -5,6 +5,13 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS review_date DATE;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS review_frequency TEXT DEFAULT 'quarterly' CHECK (review_frequency IN ('monthly', 'quarterly', 'yearly', 'custom'));
 
--- Update terminology: projects -> accountability_periods (we'll keep the table name for now but update UI)
--- Add period description
+-- Add period description and status
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS period_description TEXT;
+
+-- Update status field to use 'active' by default, only 'complete' after end-of-period review
+ALTER TABLE projects ALTER COLUMN status SET DEFAULT 'active';
+UPDATE projects SET status = 'active' WHERE status IS NULL OR status = '';
+
+-- Add constraint to ensure only valid status values
+ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_status_check;
+ALTER TABLE projects ADD CONSTRAINT projects_status_check CHECK (status IN ('active', 'complete', 'paused'));

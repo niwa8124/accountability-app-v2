@@ -152,7 +152,7 @@
         <div class="step-indicator">
           <div class="step active" id="step1">
             <div class="step-number">1</div>
-            <div class="step-label">Project Setup</div>
+            <div class="step-label">Agreement Setup</div>
           </div>
           <div class="step" id="step2">
             <div class="step-number">2</div>
@@ -171,31 +171,48 @@
       <div id="projectSetup" class="card">
         <h2>🔗 Step 1: Create or Join an Accountability Agreement</h2>
         <p style="margin-bottom: 1.5rem; color: #666;">Start a new accountability agreement or join your partner's existing one.</p>
-        <div class="project-setup-grid">
-          <div>
-            <h3>Create New Agreement</h3>
-            <div style="margin-bottom: 1rem;">
-              <input type="text" id="customCodeInput" placeholder="Custom code (optional)" style="width: 100%; margin-bottom: 0.5rem;" maxlength="10" />
-              <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <select id="reviewFrequency" style="flex: 1;">
-                  <option value="monthly">Monthly Review</option>
-                  <option value="quarterly" selected>Quarterly Review (3 months)</option>
-                  <option value="yearly">Yearly Review</option>
-                  <option value="custom">Custom Period</option>
-                </select>
-                <input type="date" id="reviewDate" style="flex: 1;" />
-              </div>
-              <button onclick="createAccountabilityAgreement()" id="createBtn" style="width: 100%;">Create Agreement</button>
-            </div>
-            <p style="font-size: 0.9rem; color: #666; margin: 0;">Set your review timeline and commitment duration</p>
+        <!-- Agreement Type Selection -->
+        <div style="margin-bottom: 1.5rem;">
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="agreementType" value="create" checked onchange="toggleAgreementType()" />
+              <span>Create New Agreement</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="agreementType" value="join" onchange="toggleAgreementType()" />
+              <span>Join Existing Agreement</span>
+            </label>
           </div>
-          <div>
-            <h3>Join Existing Agreement</h3>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="text" id="projectCodeInput" placeholder="Enter code..." style="flex: 1;" />
-              <button onclick="joinProject()" id="joinBtn">Join</button>
+        </div>
+
+        <!-- Create New Agreement Form -->
+        <div id="createAgreementForm">
+          <h3>Create New Agreement</h3>
+          <div style="margin-bottom: 1rem;">
+            <input type="text" id="customCodeInput" placeholder="Create alphanumeric code name (e.g., CDIV202506)" style="width: 100%; margin-bottom: 0.5rem;" maxlength="15" />
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <select id="reviewFrequency" style="flex: 1;">
+                <option value="monthly">Monthly Review</option>
+                <option value="quarterly" selected>Quarterly Review</option>
+                <option value="yearly">Yearly Review</option>
+                <option value="custom">Custom Period</option>
+              </select>
+              <input type="date" id="reviewDate" style="flex: 1;" />
             </div>
+            <input type="email" id="partnerEmail" placeholder="Partner's email address (optional)" style="width: 100%; margin-bottom: 0.5rem;" />
+            <button onclick="createAccountabilityAgreement()" id="createBtn" style="width: 100%;">Create Agreement & Send Invitation</button>
           </div>
+          <p style="font-size: 0.9rem; color: #666; margin: 0;">If you provide an email, we'll send your partner an invitation link</p>
+        </div>
+
+        <!-- Join Existing Agreement Form -->
+        <div id="joinAgreementForm" class="hidden">
+          <h3>Join Existing Agreement</h3>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="projectCodeInput" placeholder="Enter agreement code..." style="flex: 1;" />
+            <button onclick="joinProject()" id="joinBtn">Join Agreement</button>
+          </div>
+          <p style="font-size: 0.9rem; color: #666; margin: 0;">Enter the code shared by your accountability partner</p>
         </div>
         <div id="currentProjectInfo" class="project-info hidden">
           <strong>✅ Active Project:</strong> <span id="currentProjectCode"></span>
@@ -231,7 +248,7 @@
             <div id="userVisionDisplay" class="vision-box user-vision-box">Your vision...</div>
             <div class="vision-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
               <button onclick="editVision()" class="secondary" style="flex: 1;">✏️ Edit My Vision</button>
-              <button onclick="proceedToSigning()" id="proceedBtn" style="flex: 1;" class="hidden">✅ Ready to Sign</button>
+              <button onclick="proceedToSigning()" id="proceedBtn" style="flex: 1; opacity: 0.5;" class="hidden" disabled>⏳ Discuss First</button>
             </div>
           </div>
           <div>
@@ -243,7 +260,19 @@
           </div>
         </div>
         <div id="bothVisionsComplete" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: #f0f8ff; border-radius: 8px; border: 2px solid #4CAF50;">
-          <p style="margin: 0; color: #2c5530;"><strong>🎉 Both visions are complete!</strong> Now schedule a time to meet and discuss your commitments. When you're both ready to formalize your agreement, click "Ready to Sign" below your vision.</p>
+          <p style="margin-bottom: 1rem; color: #2c5530;"><strong>🎉 Both visions are complete!</strong> Now schedule a time to meet and discuss your commitments.</p>
+          
+          <div style="background: white; padding: 1rem; border-radius: 8px; border: 2px solid #667eea;">
+            <p style="margin-bottom: 1rem; font-weight: bold; color: #333;">Gateway Question:</p>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-bottom: 0.5rem;">
+              <input type="radio" name="discussedVision" value="yes" onchange="enableReadyToSign()" />
+              <span>Yes, I have discussed my vision with my partner</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="discussedVision" value="no" onchange="disableReadyToSign()" />
+              <span>No, we still need to discuss our visions</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -315,6 +344,15 @@
       console.log('✅ Fresh app loaded');
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       if (hashParams.get('type') === 'signup') showMessage('✅ Email confirmed!');
+      
+      // Check for invitation code in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('invite')) {
+        // Switch to join mode if there's an invite code
+        document.querySelector('input[name="agreementType"][value="join"]').checked = true;
+        toggleAgreementType();
+      }
+      
       initializeAuth();
       setupReviewDateSelector();
     });
@@ -353,6 +391,28 @@
       
       // Update date when frequency changes
       frequencySelect.addEventListener('change', updateDefaultDate);
+    }
+
+    function toggleAgreementType() {
+      const createSelected = document.querySelector('input[name="agreementType"]:checked').value === 'create';
+      
+      document.getElementById('createAgreementForm').classList.toggle('hidden', !createSelected);
+      document.getElementById('joinAgreementForm').classList.toggle('hidden', createSelected);
+      
+      // Check for invitation code in URL when switching to join
+      if (!createSelected) {
+        checkForInvitationCode();
+      }
+    }
+
+    function checkForInvitationCode() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const inviteCode = urlParams.get('invite');
+      
+      if (inviteCode) {
+        document.getElementById('projectCodeInput').value = inviteCode;
+        showMessage('Invitation code auto-filled! Click "Join Agreement" to continue.', 'info');
+      }
     }
 
     function initializeAuth() {
@@ -563,59 +623,67 @@
       const customCode = document.getElementById('customCodeInput').value.trim().toUpperCase();
       const frequency = document.getElementById('reviewFrequency').value;
       const reviewDate = document.getElementById('reviewDate').value;
+      const partnerEmail = document.getElementById('partnerEmail').value.trim();
       
       if (!reviewDate) return showMessage("Please select a review date.", 'error');
+      if (!customCode) return showMessage("Please create a code name for your agreement.", 'error');
       
       setButtonLoading('createBtn', true);
       
       try {
-        let projectCode = customCode;
+        // Validate custom code format
+        if (!/^[A-Z0-9]{3,15}$/.test(customCode)) {
+          showMessage("Code must be 3-15 characters (letters and numbers only).", 'error');
+          return;
+        }
         
-        if (customCode) {
-          // Validate custom code format
-          if (!/^[A-Z0-9]{3,10}$/.test(customCode)) {
-            showMessage("Custom code must be 3-10 characters (letters and numbers only).", 'error');
-            return;
-          }
+        // Check if custom code already exists
+        const { data: existingProject } = await supabase
+          .from('projects')
+          .select('project_code')
+          .eq('project_code', customCode)
+          .single();
           
-          // Check if custom code already exists
-          const { data: existingProject } = await supabase
-            .from('projects')
-            .select('project_code')
-            .eq('project_code', customCode)
-            .single();
-            
-          if (existingProject) {
-            showMessage("This code already exists. Choose a different one.", 'error');
-            return;
-          }
-        } else {
-          // Generate random code
-          const { data: code, error: codeError } = await supabase.rpc('generate_project_code');
-          if (codeError) return showMessage("Failed to generate code.", 'error');
-          projectCode = code;
+        if (existingProject) {
+          showMessage("This code already exists. Choose a different one.", 'error');
+          return;
         }
 
         const { data, error } = await supabase
           .from('projects')
           .insert([{ 
-            project_code: projectCode, 
+            project_code: customCode, 
             creator_id: currentUser.id,
             period_description: `${frequency} accountability agreement`,
             review_frequency: frequency,
-            review_date: reviewDate
+            review_date: reviewDate,
+            status: 'active'
           }])
           .select()
           .single();
           
-        if (error) showMessage(error.message, 'error');
-        else {
-          currentProject = data;
-          // Clear form
-          document.getElementById('customCodeInput').value = '';
-          showMessage(`🎯 Accountability agreement created! Code: ${projectCode}\nShare with your partner!`);
-          updateUIBasedOnProject();
+        if (error) {
+          showMessage(error.message, 'error');
+          return;
         }
+
+        currentProject = data;
+        
+        // Send email invitation if provided
+        if (partnerEmail) {
+          await sendEmailInvitation(partnerEmail, customCode);
+        }
+        
+        // Clear form
+        document.getElementById('customCodeInput').value = '';
+        document.getElementById('partnerEmail').value = '';
+        
+        const inviteMessage = partnerEmail ? 
+          `🎯 Agreement created! Code: ${customCode}\n📧 Invitation sent to ${partnerEmail}` :
+          `🎯 Agreement created! Code: ${customCode}\nShare this code with your partner!`;
+        
+        showMessage(inviteMessage);
+        updateUIBasedOnProject();
       } catch (error) {
         showMessage("Failed to create accountability agreement.", 'error');
       } finally {
@@ -810,12 +878,33 @@ We commit to supporting each other in achieving these goals.
       updateStepIndicator(2);
     }
 
+    function enableReadyToSign() {
+      const proceedBtn = document.getElementById('proceedBtn');
+      proceedBtn.disabled = false;
+      proceedBtn.style.opacity = '1';
+      proceedBtn.textContent = '✅ Ready to Sign';
+    }
+
+    function disableReadyToSign() {
+      const proceedBtn = document.getElementById('proceedBtn');
+      proceedBtn.disabled = true;
+      proceedBtn.style.opacity = '0.5';
+      proceedBtn.textContent = '⏳ Discuss First';
+    }
+
     function proceedToSigning() {
       const userVision = document.getElementById('userVisionDisplay').innerText;
       const partnerVision = document.getElementById('partnerVisionDisplay').innerText;
       
       if (!userVision || userVision === 'Your vision...' || !partnerVision || partnerVision === 'Waiting for partner...') {
         showMessage("Both visions must be completed before signing.", 'error');
+        return;
+      }
+
+      // Check gateway question
+      const discussedVision = document.querySelector('input[name="discussedVision"]:checked');
+      if (!discussedVision || discussedVision.value !== 'yes') {
+        showMessage("Please confirm you have discussed your vision with your partner before proceeding to sign.", 'error');
         return;
       }
 
@@ -1256,6 +1345,34 @@ This partnership is built on trust, mutual support, and shared growth.
         }
       } catch (error) {
         console.log('No existing agreement found or error:', error);
+      }
+    }
+
+    // Email invitation function
+    async function sendEmailInvitation(partnerEmail, agreementCode) {
+      try {
+        const { userName } = await getUserNames();
+        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${agreementCode}`;
+        
+        // For now, we'll just copy the invitation message to clipboard
+        // In a production app, you'd use an email service like SendGrid, Resend, etc.
+        const inviteMessage = `${userName} has invited you to join their accountability agreement!
+
+Agreement Code: ${agreementCode}
+
+Click this link to join: ${inviteUrl}
+
+Or visit the accountability app and enter the code: ${agreementCode}`;
+
+        // Copy to clipboard
+        await navigator.clipboard.writeText(inviteMessage);
+        console.log('Invitation copied to clipboard');
+        
+        // In a real app, you would send this via email service
+        // await sendEmailViaService(partnerEmail, inviteMessage);
+        
+      } catch (error) {
+        console.error('Error creating invitation:', error);
       }
     }
 
