@@ -472,13 +472,49 @@
           .eq('id', currentUser.id)
           .single();
         
-        const displayName = profile?.full_name || currentUser.email;
+        let displayName = profile?.full_name;
+        
+        // If no name in profile, check user metadata and update profile
+        if (!displayName && currentUser.user_metadata?.full_name) {
+          displayName = currentUser.user_metadata.full_name;
+          
+          // Update the profile with the name from metadata
+          await supabase
+            .from('profiles')
+            .update({ full_name: displayName })
+            .eq('id', currentUser.id);
+        }
+        
+        // If still no name, prompt user to add one
+        if (!displayName) {
+          displayName = currentUser.email;
+          promptForName();
+        }
+        
         document.getElementById('userEmail').textContent = displayName;
       } catch (error) {
         document.getElementById('userEmail').textContent = currentUser.email;
+        console.error('Error loading profile:', error);
       }
       
       loadUserData();
+    }
+
+    async function promptForName() {
+      const name = prompt("Please enter your name to personalize your experience:");
+      if (name && name.trim()) {
+        try {
+          await supabase
+            .from('profiles')
+            .update({ full_name: name.trim() })
+            .eq('id', currentUser.id);
+          
+          document.getElementById('userEmail').textContent = name.trim();
+          showMessage("✅ Name updated!");
+        } catch (error) {
+          console.error('Error updating name:', error);
+        }
+      }
     }
 
     function showAuthSection() {
@@ -606,14 +642,20 @@
         if (error) {
           showMessage(error.message, 'error');
         } else {
-          // Update the profile with the name
+          showMessage("🎉 Account created! Check your email to confirm.");
+          
+          // The name will be saved via the trigger when user confirms email
+          // But let's also try to save it immediately in case the trigger doesn't work
           if (data.user) {
-            await supabase
-              .from('profiles')
-              .update({ full_name: fullName })
-              .eq('id', data.user.id);
+            try {
+              await supabase
+                .from('profiles')
+                .update({ full_name: fullName })
+                .eq('id', data.user.id);
+            } catch (profileError) {
+              console.log('Profile update attempt:', profileError);
+            }
           }
-          showMessage("🎉 Account created! Check your email.");
         }
       } catch (error) {
         showMessage("Failed to create account.", 'error');
@@ -701,17 +743,14 @@
         // Send email invitation if provided
         if (partnerEmail) {
           await sendEmailInvitation(partnerEmail, customCode);
+          showMessage(`🎯 Agreement created! Code: ${customCode}\n📧 Invitation copied to clipboard - send it to ${partnerEmail}`);
+        } else {
+          showMessage(`🎯 Agreement created! Code: ${customCode}\nShare this code with your partner!`);
         }
         
         // Clear form
         document.getElementById('customCodeInput').value = '';
         document.getElementById('partnerEmail').value = '';
-        
-        const inviteMessage = partnerEmail ? 
-          `🎯 Agreement created! Code: ${customCode}\n📧 Invitation sent to ${partnerEmail}` :
-          `🎯 Agreement created! Code: ${customCode}\nShare this code with your partner!`;
-        
-        showMessage(inviteMessage);
         updateUIBasedOnProject();
       } catch (error) {
         showMessage("Failed to create accountability agreement.", 'error');
@@ -1383,19 +1422,46 @@ This partnership is built on trust, mutual support, and shared growth.
         const { userName } = await getUserNames();
         const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${agreementCode}`;
         
-        // For now, we'll just copy the invitation message to clipboard
-        // In a production app, you'd use an email service like SendGrid, Resend, etc.
-        const inviteMessage = `${userName} has invited you to join their accountability agreement!
+        // Enhanced invitation message
+        const inviteMessage = `Subject: ${userName} invited you to be their Accountability Partner!
 
-Agreement Code: ${agreementCode}
+Hi there!
 
-Click this link to join: ${inviteUrl}
+${userName} has invited you to join their accountability partnership through our Accountability Partners app.
 
-Or visit the accountability app and enter the code: ${agreementCode}`;
+🎯 What this means:
+- You'll both draft your personal goals and commitments
+- Support each other in staying on track
+- Have regular check-ins to celebrate progress
+
+📝 To join:
+1. Click this link: ${inviteUrl}
+2. Create your account (or login if you already have one)
+3. The agreement code (${agreementCode}) will be automatically filled in
+
+Or you can:
+- Visit: ${window.location.origin}
+- Enter agreement code: ${agreementCode}
+
+Ready to achieve your goals together? Let's do this! 💪
+
+---
+Generated by Accountability Partners App
+${window.location.origin}`;
 
         // Copy to clipboard
         await navigator.clipboard.writeText(inviteMessage);
         console.log('Invitation copied to clipboard');
+        
+        // Store invitation in localStorage for easy access
+        const invitations = JSON.parse(localStorage.getItem('pendingInvitations') || '[]');
+        invitations.push({
+          email: partnerEmail,
+          code: agreementCode,
+          message: inviteMessage,
+          created: new Date().toISOString()
+        });
+        localStorage.setItem('pendingInvitations', JSON.stringify(invitations));
         
         // In a real app, you would send this via email service
         // await sendEmailViaService(partnerEmail, inviteMessage);
