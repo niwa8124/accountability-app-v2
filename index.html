@@ -474,21 +474,37 @@
         
         let displayName = profile?.full_name;
         
-        // If no name in profile, check user metadata and update profile
-        if (!displayName && currentUser.user_metadata?.full_name) {
-          displayName = currentUser.user_metadata.full_name;
+        // If no name in profile, check various sources
+        if (!displayName) {
+          // Check user metadata
+          if (currentUser.user_metadata?.full_name) {
+            displayName = currentUser.user_metadata.full_name;
+          }
+          // Check localStorage for pending name
+          else {
+            const pendingName = localStorage.getItem(`pendingUserName_${currentUser.id}`);
+            if (pendingName) {
+              displayName = pendingName;
+              localStorage.removeItem(`pendingUserName_${currentUser.id}`);
+            }
+          }
           
-          // Update the profile with the name from metadata
-          await supabase
-            .from('profiles')
-            .update({ full_name: displayName })
-            .eq('id', currentUser.id);
+          // Update the profile with the name if we found one
+          if (displayName && displayName !== currentUser.email) {
+            try {
+              await supabase
+                .from('profiles')
+                .update({ full_name: displayName })
+                .eq('id', currentUser.id);
+            } catch (updateError) {
+              console.log('Profile update failed:', updateError);
+            }
+          }
         }
         
-        // If still no name, prompt user to add one
+        // If still no name, use email and maybe prompt later
         if (!displayName) {
           displayName = currentUser.email;
-          promptForName();
         }
         
         document.getElementById('userEmail').textContent = displayName;
@@ -644,17 +660,9 @@
         } else {
           showMessage("🎉 Account created! Check your email to confirm.");
           
-          // The name will be saved via the trigger when user confirms email
-          // But let's also try to save it immediately in case the trigger doesn't work
+          // Save the name to localStorage temporarily for when they confirm
           if (data.user) {
-            try {
-              await supabase
-                .from('profiles')
-                .update({ full_name: fullName })
-                .eq('id', data.user.id);
-            } catch (profileError) {
-              console.log('Profile update attempt:', profileError);
-            }
+            localStorage.setItem(`pendingUserName_${data.user.id}`, fullName);
           }
         }
       } catch (error) {
