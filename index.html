@@ -90,6 +90,30 @@
     .history-table tr:hover { background: #f8f9fa; }
     .empty-state { text-align: center; padding: 2rem; color: #666; background: #f8f9fa; border-radius: 8px; }
     
+    /* Agreement Type Buttons */
+    .agreement-type-btn { 
+      display: flex; align-items: center; justify-content: center; 
+      padding: 1rem 1.5rem; border: 2px solid #e1e5e9; border-radius: 8px; 
+      cursor: pointer; transition: all 0.3s ease; background: white; flex: 1; min-width: 200px;
+    }
+    .agreement-type-btn:hover { border-color: #667eea; background: #f8f9ff; }
+    .agreement-type-btn.agreement-type-active { border-color: #667eea; background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%); }
+    .agreement-type-btn input[type="radio"] { display: none; }
+    .agreement-type-text { font-weight: 600; color: #333; }
+    .agreement-type-btn.agreement-type-active .agreement-type-text { color: #667eea; }
+    
+    /* Gateway Question Buttons */
+    .gateway-btn { 
+      display: flex; align-items: center; padding: 0.75rem 1rem; 
+      border: 2px solid #e1e5e9; border-radius: 8px; cursor: pointer; 
+      transition: all 0.3s ease; background: #f8f9fa; 
+    }
+    .gateway-btn:hover { border-color: #667eea; background: #f0f8ff; }
+    .gateway-btn input[type="radio"]:checked + .gateway-text { color: #667eea; font-weight: 600; }
+    .gateway-btn input[type="radio"] { display: none; }
+    .gateway-text { color: #555; }
+    .gateway-btn:has(input[type="radio"]:checked) { border-color: #667eea; background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%); }
+    
     @media (max-width: 768px) {
       .container { padding: 1rem; }
       .header h1 { font-size: 2rem; }
@@ -109,7 +133,6 @@
     <header class="header">
       <h1>Accountability Partners</h1>
       <p>Clarify your goals. Commit together. Stay on track.</p>
-      <p style="font-size: 1rem; margin-top: 1rem;">✨ Fixed Version - Project Join Works</p>
     </header>
 
     <div id="userInfo" class="user-info hidden">
@@ -174,13 +197,13 @@
         <!-- Agreement Type Selection -->
         <div style="margin-bottom: 1.5rem;">
           <div style="display: flex; gap: 1rem; justify-content: center;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-              <input type="radio" name="agreementType" value="create" checked onchange="toggleAgreementType()" />
-              <span>Create New Agreement</span>
+            <label class="agreement-type-btn agreement-type-active" for="createRadio">
+              <input type="radio" name="agreementType" value="create" id="createRadio" checked onchange="toggleAgreementType()" />
+              <span class="agreement-type-text">📝 Create New Agreement</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-              <input type="radio" name="agreementType" value="join" onchange="toggleAgreementType()" />
-              <span>Join Existing Agreement</span>
+            <label class="agreement-type-btn" for="joinRadio">
+              <input type="radio" name="agreementType" value="join" id="joinRadio" onchange="toggleAgreementType()" />
+              <span class="agreement-type-text">🤝 Join Existing Agreement</span>
             </label>
           </div>
         </div>
@@ -264,14 +287,16 @@
           
           <div style="background: white; padding: 1rem; border-radius: 8px; border: 2px solid #667eea;">
             <p style="margin-bottom: 1rem; font-weight: bold; color: #333;">Gateway Question:</p>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-bottom: 0.5rem;">
-              <input type="radio" name="discussedVision" value="yes" onchange="enableReadyToSign()" />
-              <span>Yes, I have discussed my vision with my partner</span>
-            </label>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-              <input type="radio" name="discussedVision" value="no" onchange="disableReadyToSign()" />
-              <span>No, we still need to discuss our visions</span>
-            </label>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <label class="gateway-btn" for="discussedYes">
+                <input type="radio" name="discussedVision" value="yes" id="discussedYes" onchange="enableReadyToSign()" />
+                <span class="gateway-text">✅ Yes, I have discussed my vision with my partner</span>
+              </label>
+              <label class="gateway-btn" for="discussedNo">
+                <input type="radio" name="discussedVision" value="no" id="discussedNo" onchange="disableReadyToSign()" />
+                <span class="gateway-text">⏳ No, we still need to discuss our visions</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -398,6 +423,10 @@
       
       document.getElementById('createAgreementForm').classList.toggle('hidden', !createSelected);
       document.getElementById('joinAgreementForm').classList.toggle('hidden', createSelected);
+      
+      // Update button visual states
+      document.querySelector('label[for="createRadio"]').classList.toggle('agreement-type-active', createSelected);
+      document.querySelector('label[for="joinRadio"]').classList.toggle('agreement-type-active', !createSelected);
       
       // Check for invitation code in URL when switching to join
       if (!createSelected) {
@@ -1235,7 +1264,7 @@ This partnership is built on trust, mutual support, and shared growth.
             <td>Partner</td>
             <td>${userVision.substring(0, 100)}${userVision.length > 100 ? '...' : ''}</td>
             <td>${partnerVision.substring(0, 100)}${partnerVision.length > 100 ? '...' : ''}</td>
-            <td><span style="color: #4CAF50; font-weight: 500;">✓ Completed</span></td>
+            <td><span style="color: #667eea; font-weight: 500;">🔄 Active</span></td>
           `;
           tbody.appendChild(row);
         });
